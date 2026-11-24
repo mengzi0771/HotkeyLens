@@ -59,6 +59,16 @@ jobs:
           -Version '${{ steps.version.outputs.version }}'
           -InnoCompiler 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
 
+      - name: Verify packages on a clean runner
+        shell: pwsh
+        run: >
+          ./packaging/verify-installer.ps1
+          -Setup artifacts/dist/HotkeyLens-Setup.exe
+          -PortableArchive artifacts/dist/HotkeyLens-Portable-win-x64.zip
+          -Checksums artifacts/dist/SHA256SUMS.txt
+          -WorkRoot artifacts/release-verify
+          -AllowDefaultDataSentinel
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -69,7 +79,7 @@ jobs:
             artifacts/dist/SHA256SUMS.txt
           if-no-files-found: error
 
-      - name: Publish GitHub Release
+      - name: Create or update draft GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
         env:
@@ -77,6 +87,7 @@ jobs:
         run: |
           $tag = $env:GITHUB_REF_NAME
           $title = "HotkeyLens $tag"
+          $notesFile = "docs/RELEASE_NOTES_$tag.md"
           $assets = @(
             'artifacts/dist/HotkeyLens-Setup.exe',
             'artifacts/dist/HotkeyLens-Portable-win-x64.zip',
@@ -84,10 +95,14 @@ jobs:
           )
           gh release view $tag *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag $assets --title $title --generate-notes
+            if (Test-Path $notesFile) {
+              gh release create $tag $assets --draft --title $title --notes-file $notesFile
+            } else {
+              gh release create $tag $assets --draft --title $title --generate-notes
+            }
           } else {
             gh release upload $tag $assets --clobber
           }
           if ($LASTEXITCODE -ne 0) {
-            throw "Failed to publish release $tag."
+            throw "Failed to create or update draft release $tag."
           }

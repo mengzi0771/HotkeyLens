@@ -127,6 +127,38 @@ dotnet test tests/HotkeyLens.Core.Tests/HotkeyLens.Core.Tests.csproj -c Release 
 
 这一点属于当前验收环境限制，需要在发布说明中保留。
 
+### 3.7 安装、升级与卸载（GitHub 干净 Runner）
+
+本机上的 Inno Setup 安装器无法启动，连最小探针也被安全软件环境拦截，因此生命周期验收在 GitHub 托管的干净 Windows x64 Runner 上完成：
+
+- 工作流：`.github/workflows/verify-installer.yml`
+- 运行：`45424781224`（commit `baece74`），时长约 3 分 21 秒，全部步骤成功
+- 环境：Windows Server 2025 x64，.NET SDK 10.0.404，Inno Setup 6.7.1
+
+实际输出：
+
+```
+SetupSha256Verified: True
+first.InstalledVersion: 1.0.0
+first.Shortcuts: desktop + start menu
+upgrade.InstalledVersion: 1.0.1
+upgrade.Shortcuts: desktop + start menu
+UpgradePreservedData: True
+installed.Scan: apps=147, shortcuts=20, conflicts=0
+installed.ExitCode: 0
+Uninstall: program files and shortcuts removed; external data preserved
+portable.Scan: apps=146, shortcuts=20, conflicts=0
+portable.ExitCode: 0
+PortableArchive: launched without an installed .NET runtime
+Status: PASS
+```
+
+覆盖内容包括：静默安装、桌面与开始菜单快捷方式、安装目录不含用户数据、1.0.0 → 1.0.1 覆盖升级、升级后数据保留、安装版与便携版真实扫描与正常退出、卸载删除程序文件和快捷方式、卸载保留外部用户数据。该工作流的 `hotkeylens-v1.0.0` artifact 保留了与验证完全一致的安装包和便携包。
+
+首次运行 `45422582440` 同样通过（3 分 19 秒）；第二次运行增加了“上传已验证发行包”的步骤并再次通过。唯一注解是 GitHub 关于 Node.js 20 Actions 的弃用提示，与本项目无关。
+
+本机安装器无法启动的原因仍是火绒行为拦截，不能据此判定安装包损坏：同一个 Setup 在干净 Runner 上完成了全部安装和卸载步骤。
+
 ## 4. 构建验证
 
 ```powershell
@@ -153,6 +185,7 @@ Release 测试结果：
 - 未做多显示器、200% 以上 DPI、Windows 10 22H2 的完整回归；
 - 未对真实第三方软件配置的所有版本组合进行矩阵测试；
 - 未做长时间扫描压力测试；
-- 未在 CI 上运行（本项目当前没有云端 Windows 测试环境）。
+- 安装器生命周期已在 GitHub 干净 Runner 验证，但 WPF 控件级交互没有纳入 CI；当前 Runner 是 Windows Server 2025，不是 Windows 10/11 桌面环境；
+- 未在 CI 上覆盖主题切换和界面截图。这些项目已在真实桌面手动/UIA 验收，但不能替代完整回归。
 
 这些项目在后续开发中应补充，但不能用推测替代。
