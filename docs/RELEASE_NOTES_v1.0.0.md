@@ -78,6 +78,10 @@ No compatibility with every antivirus product is claimed.
 
 The per-run results are recorded in [TESTING.md](https://github.com/mengzi0771/HotkeyLens/blob/main/docs/TESTING.md).
 
+## License
+
+MIT License, Copyright © 2026 mengzi0771. The full text is in [LICENSE](https://github.com/mengzi0771/HotkeyLens/blob/main/LICENSE).
+
 ## Links
 
 - [Source code](https://github.com/mengzi0771/HotkeyLens)

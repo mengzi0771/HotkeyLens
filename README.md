@@ -324,6 +324,10 @@ If this happens, add `HotkeyLens.exe` (and, for installation, `HotkeyLens-Setup.
 - Improve UI Automation coverage by letting the user choose a target window before scanning its menu hierarchy.
 - Export shortcut inventories as CSV/JSON for team review.
 
+## License
+
+MIT License, Copyright © 2026 mengzi0771. See [LICENSE](LICENSE).
+
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md) (Chinese)

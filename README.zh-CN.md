@@ -324,6 +324,10 @@ HotkeyLens 只将自己的设置与扫描快照写入 `%LOCALAPPDATA%\HotkeyLens
 - 改进 UI Automation 的覆盖策略，支持用户明确选择目标窗口后扫描菜单层级。
 - 导出快捷键清单为 CSV/JSON，便于团队审阅。
 
+## 许可证
+
+MIT 许可证，版权 © 2026 mengzi0771。详见 [LICENSE](LICENSE)。
+
 ## 文档
 
 - [架构说明](docs/ARCHITECTURE.md)
