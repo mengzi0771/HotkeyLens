@@ -12,6 +12,7 @@ HotkeyLens 是一款按需运行的 Windows 桌面工具，用于发现本机应
 
 ## 目录
 
+- [下载与安装](#下载与安装)
 - [项目状态](#项目状态)
 - [核心能力](#核心能力)
 - [如何读取快捷键](#如何读取快捷键)
@@ -23,8 +24,48 @@ HotkeyLens 是一款按需运行的 Windows 桌面工具，用于发现本机应
 - [数据与隐私](#数据与隐私)
 - [测试](#测试)
 - [已知限制](#已知限制)
+- [安全软件与 SmartScreen](#安全软件与-smartscreen)
 - [后续方向](#后续方向)
 - [文档](#文档)
+
+## 下载与安装
+
+**普通用户直接下载发行包即可，不需要单独安装 .NET 运行时。**
+
+| 文件 | 适用场景 | 大小 |
+|---|---|---|
+| `HotkeyLens-Setup.exe` | 常规安装，创建开始菜单和可选桌面快捷方式 | 43.6 MiB |
+| `HotkeyLens-Portable-win-x64.zip` | 免安装直接运行 | 62.3 MiB |
+| `SHA256SUMS.txt` | 校验下载文件 | < 1 KiB |
+
+请从 [GitHub 最新发行版](https://github.com/mengzi0771/HotkeyLens/releases/latest) 下载。
+
+### 安装版
+
+1. 从同一个发行版下载 `HotkeyLens-Setup.exe` 和 `SHA256SUMS.txt`。
+2. 可选择先校验文件：
+
+   ```powershell
+   Get-FileHash .\HotkeyLens-Setup.exe -Algorithm SHA256
+   Get-Content .\SHA256SUMS.txt
+   ```
+
+   计算的哈希必须与 `HotkeyLens-Setup.exe` 对应行一致。
+3. 运行安装程序。它安装到当前用户，不要求管理员权限。
+4. 选择安装目录，以及是否创建桌面快捷方式。
+5. 可从安装完成页、开始菜单或桌面快捷方式启动 HotkeyLens。
+
+程序没有代码签名，Windows SmartScreen 可能显示“未知发布者”。只有在你确认文件来自本仓库发行页且 SHA256 一致时才继续。参见 [安全软件与 SmartScreen](#安全软件与-smartscreen)。
+
+### 便携版
+
+将 `HotkeyLens-Portable-win-x64.zip` 解压到你有权控制的目录，直接运行 `HotkeyLens.exe`。便携版与安装版共用 `%LOCALAPPDATA%\HotkeyLens` 下的用户数据；ZIP 内不包含扫描数据或源代码。
+
+### 系统要求
+
+- Windows 10 1809 或更高版本，或 Windows 11，x64
+- 桌面会话（这是 WPF 桌面程序，不是系统服务）
+- 无需 .NET SDK 或 .NET 运行时
 
 ## 项目状态
 
@@ -32,7 +73,7 @@ HotkeyLens 是一款按需运行的 Windows 桌面工具，用于发现本机应
 - 技术栈：C# / .NET 10 / WPF / Windows UI Automation
 - 当前版本：1.0.0
 - 自动化测试：67 / 67 通过
-- 当前状态：可直接编译运行；快捷键管理仅提供安全的只读定位，不自动改写第三方配置
+- 当前状态：已打包为自包含 Windows x64 安装版和便携版；快捷键管理仅提供安全的只读定位，不自动改写第三方配置
 
 ## 核心能力
 
@@ -180,6 +221,7 @@ HotkeyLens.Core
 - Windows 10 或 Windows 11（x64）
 - .NET SDK 10.0.400 或更高版本（项目固定 `10.0.404`）
 - 可选：Visual Studio 2022/2026 的 .NET 桌面开发工作负载
+- 制作安装包需要 Inno Setup 6
 
 ```powershell
 git clone https://github.com/mengzi0771/HotkeyLens.git
@@ -189,13 +231,23 @@ dotnet build HotkeyLens.sln -c Release
 dotnet run --project src/HotkeyLens.App/HotkeyLens.App.csproj -c Release
 ```
 
-构建后的可执行文件位于：
+框架依赖的开发版本位于：
 
 ```
 src/HotkeyLens.App/bin/Release/net10.0-windows/HotkeyLens.exe
 ```
 
-该输出是框架依赖（framework-dependent）程序，运行机器需要 .NET 10 Desktop Runtime。开发机安装 SDK 后已包含所需运行时。
+运行该开发版本需要 .NET 10 Desktop Runtime；它不是发行包中的自包含版本。
+
+### 构建发行包
+
+```powershell
+.\packaging\build-release.ps1 -Version 1.0.0
+```
+
+脚本会发布自包含 `win-x64` 版本、生成便携 ZIP、编译 Inno Setup 安装器，并在 `artifacts\dist` 写入 `SHA256SUMS.txt`。如果 Inno Setup 安装在非默认位置，传入 `-InnoCompiler <ISCC.exe 路径>`。
+
+`.github/workflows` 中的发布工作流会执行测试并构建相同资产；`.github/workflows/verify-installer.yml` 可在干净的 GitHub Windows Runner 上手动执行安装、覆盖升级、卸载和启动验证。
 
 ### 数据位置
 
@@ -249,8 +301,20 @@ dotnet test tests/HotkeyLens.Core.Tests/HotkeyLens.Core.Tests.csproj `
 - 配置文件格式因版本而异；解析失败会记录诊断，不会猜测绑定。
 - 快捷键管理只提供设置页/配置来源定位，不自动改写第三方配置。
 - 当前机器上的保存路径可能被第三方安全软件拦截；程序会保留旧数据并给出可操作错误。
+- 发行程序没有代码签名，可能出现 SmartScreen 或“未知发布者”提示。
 
 完整清单见 [docs/LIMITATIONS.md](docs/LIMITATIONS.md)。
+
+## 安全软件与 SmartScreen
+
+HotkeyLens 只将自己的设置与扫描快照写入 `%LOCALAPPDATA%\HotkeyLens`。某些应用控制软件可能静默拒绝新下载的未签名程序写入该路径。此时程序会：
+
+- 显示具体路径和底层错误；
+- 保留原有的 `scan-snapshot.json` 不变；
+- 只清理自己的临时文件；
+- 不把保存失败报告为成功。
+
+遇到此情况，请将 `HotkeyLens.exe`（安装时还包括 `HotkeyLens-Setup.exe`）加入安全软件的信任/应用放行列表。不要为了运行 HotkeyLens 而关闭全系统防护。本项目没有声称通过所有杀毒软件检测，发行文件也没有数字签名，因此 Windows 可能显示“未知发布者”。运行前请核对同一个发行版中的 SHA256。
 
 ## 后续方向
 

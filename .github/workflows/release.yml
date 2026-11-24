@@ -1,0 +1,93 @@
+name: Build Windows release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version in x.y.z form (used when building manually)
+        required: true
+        default: 1.0.0
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $ref = '${{ github.ref }}'
+          if ($ref -like 'refs/tags/v*') {
+            $version = '${{ github.ref_name }}'.Substring(1)
+          } else {
+            $version = '${{ inputs.version }}'
+          }
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "Version must use x.y.z form, got: $version"
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Run automated tests
+        shell: pwsh
+        run: >
+          dotnet test tests/HotkeyLens.Core.Tests/HotkeyLens.Core.Tests.csproj
+          --configuration Release --nologo -v:minimal
+          -p:_MSTestEnableParentProcessQuery=false
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build setup and portable package
+        shell: pwsh
+        run: >
+          ./packaging/build-release.ps1
+          -Version '${{ steps.version.outputs.version }}'
+          -InnoCompiler 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: HotkeyLens-${{ steps.version.outputs.version }}-win-x64
+          path: |
+            artifacts/dist/HotkeyLens-Setup.exe
+            artifacts/dist/HotkeyLens-Portable-win-x64.zip
+            artifacts/dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $title = "HotkeyLens $tag"
+          $assets = @(
+            'artifacts/dist/HotkeyLens-Setup.exe',
+            'artifacts/dist/HotkeyLens-Portable-win-x64.zip',
+            'artifacts/dist/SHA256SUMS.txt'
+          )
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag $assets --title $title --generate-notes
+          } else {
+            gh release upload $tag $assets --clobber
+          }
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to publish release $tag."
+          }

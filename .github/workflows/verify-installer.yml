@@ -1,0 +1,74 @@
+name: Verify Windows installer
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Install, upgrade and uninstall on a clean Windows runner
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Run automated tests
+        shell: pwsh
+        run: >
+          dotnet test tests/HotkeyLens.Core.Tests/HotkeyLens.Core.Tests.csproj
+          --configuration Release --nologo -v:minimal
+          -p:_MSTestEnableParentProcessQuery=false
+
+      - name: Build 1.0.0 packages
+        shell: pwsh
+        run: >
+          ./packaging/build-release.ps1
+          -Version '1.0.0'
+          -InnoCompiler 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+
+      - name: Preserve 1.0.0 setup for upgrade test
+        shell: pwsh
+        run: |
+          $staging = Join-Path $PWD 'artifacts\verify-v1.0.0'
+          New-Item -ItemType Directory -Path $staging -Force | Out-Null
+          Copy-Item -LiteralPath 'artifacts\dist\HotkeyLens-Setup.exe' -Destination $staging
+          Copy-Item -LiteralPath 'artifacts\dist\SHA256SUMS.txt' -Destination $staging
+
+      - name: Build 1.0.1 upgrade packages
+        shell: pwsh
+        run: >
+          ./packaging/build-release.ps1
+          -Version '1.0.1'
+          -InnoCompiler 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+
+      - name: Verify installer lifecycle
+        shell: pwsh
+        run: |
+          ./packaging/verify-installer.ps1 `
+            -Setup 'artifacts\verify-v1.0.0\HotkeyLens-Setup.exe' `
+            -UpgradeSetup 'artifacts\dist\HotkeyLens-Setup.exe' `
+            -PortableArchive 'artifacts\dist\HotkeyLens-Portable-win-x64.zip' `
+            -Checksums 'artifacts\verify-v1.0.0\SHA256SUMS.txt' `
+            -AllowDefaultDataSentinel
+
+      - name: Upload verification logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-verification-logs
+          path: |
+            artifacts/dist/SHA256SUMS.txt
+          if-no-files-found: warn

@@ -1,0 +1,23 @@
+HotkeyLens 1.0.0 — before you install
+
+HotkeyLens is self-contained. You do not need the .NET runtime or any developer tools.
+
+Your scan results and preferences are stored in:
+  %LOCALAPPDATA%\HotkeyLens
+
+The installer writes program files only to the installation directory. It does not
+create or modify scan data. Upgrades and uninstalls leave this user data in place.
+
+HotkeyLens is not code-signed. Windows SmartScreen or your security software may show
+an "Unknown publisher" warning. If you trust this download, choose "More info" and
+verify the file with SHA256SUMS.txt from the same GitHub release.
+
+If save operations are blocked by application-control software (for example Huorong),
+allow HotkeyLens in that product's trusted/application list. Do not disable system-wide
+protection solely to run HotkeyLens.
+
+HotkeyLens only scans when you ask it to. It has no service, tray icon, startup task,
+or keyboard hook.
+
+Project and release notes:
+  https://github.com/mengzi0771/HotkeyLens
