@@ -70,17 +70,18 @@ No compatibility with every antivirus product is claimed.
 
 - Release build: 0 warnings, 0 errors.
 - Automated tests: 67 passed, 0 failed, 0 skipped.
-- Portable package launched on a machine with no .NET runtime: scan completed, 53 shortcuts and 175 applications recorded, snapshot saved, application exited with code 0.
+- The tag-triggered release workflow built the final setup and portable packages, then passed SHA256 verification, silent installation, shortcut creation, installed-app scanning, clean exit, uninstall, user-data preservation, and portable-app scanning on a clean GitHub Windows x64 runner.
+- A separate clean-runner job also covered a 1.0.0 → 1.0.1 upgrade with data preserved.
 - First save, repeated atomic overwrite, restart recovery, and failed-save data preservation were exercised with a controlled data directory.
 - Real UI automation covered all five pages, search, detail panels, theme switching, scanning, and clean exit.
-- Installer lifecycle verification runs on a clean GitHub Windows x64 runner.
+- Portable package launched on a machine with no .NET runtime: scan completed, snapshot saved, and the application exited with code 0.
 
-The per-run results are recorded in [TESTING.md](TESTING.md).
+The per-run results are recorded in [TESTING.md](https://github.com/mengzi0771/HotkeyLens/blob/main/docs/TESTING.md).
 
 ## Links
 
 - [Source code](https://github.com/mengzi0771/HotkeyLens)
-- [README](../README.md)
-- [Architecture](ARCHITECTURE.md)
-- [Technical limitations](LIMITATIONS.md)
-- [Testing](TESTING.md)
+- [README](https://github.com/mengzi0771/HotkeyLens/blob/main/README.md)
+- [Architecture](https://github.com/mengzi0771/HotkeyLens/blob/main/docs/ARCHITECTURE.md)
+- [Technical limitations](https://github.com/mengzi0771/HotkeyLens/blob/main/docs/LIMITATIONS.md)
+- [Testing](https://github.com/mengzi0771/HotkeyLens/blob/main/docs/TESTING.md)

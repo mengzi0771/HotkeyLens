@@ -50,7 +50,7 @@ Download them from the [latest GitHub release](https://github.com/mengzi0771/Hot
    Get-Content .\SHA256SUMS.txt
    ```
 
-   The hash must match `HotkeyLens-Setup.exe`.
+   The hash must match the `HotkeyLens-Setup.exe` line in `SHA256SUMS.txt`.
 3. Run the installer. It installs for the current user and does not require administrator rights.
 4. Choose an installation folder and whether to create a desktop shortcut.
 5. Launch HotkeyLens from the final page, the Start menu, or the desktop shortcut.

@@ -159,6 +159,39 @@ Status: PASS
 
 本机安装器无法启动的原因仍是火绒行为拦截，不能据此判定安装包损坏：同一个 Setup 在干净 Runner 上完成了全部安装和卸载步骤。
 
+### 3.8 标签触发的发行流程
+
+`.github/workflows/release.yml` 已用正式标签实际运行验证，而不是只提交 YAML：
+
+- 标签：`v1.0.0`（提交 `e97b8ea`）
+- 运行：`45439040247`，约 2 分 16 秒
+- 结果：全部 10 个构建步骤成功，包括 67 项自动测试、自包含构建、同包生命周期验证、artifact 上传和草稿 Release 创建。
+
+同一运行中，最终上传的安装包先接受验证，再授权进入 Release。验证输出：
+
+```
+SetupSha256Verified: True
+first.InstalledVersion: 1.0.0
+first.Shortcuts: desktop + start menu
+installed.Scan: apps=147, shortcuts=20, conflicts=0
+installed.ExitCode: 0
+Uninstall: program files and shortcuts removed; external data preserved
+PortableArchive: launched without an installed .NET runtime
+portable.Scan: apps=146, shortcuts=20, conflicts=0
+portable.ExitCode: 0
+Status: PASS
+```
+
+发布流程默认创建草稿 Release，不直接公开，避免未经确认的版本被自动发布。`v1.0.0` 草稿资产：
+
+| 文件 | 字节数 | SHA256 |
+|---|---:|---|
+| `HotkeyLens-Setup.exe` | 45,741,242 | `ef7571d56eb368dffe9a792f71776592abc43c823df1ce58349b50706ce4cceb` |
+| `HotkeyLens-Portable-win-x64.zip` | 65,318,509 | `52515a80f1a92db91d14052bf8581e8444ff743ae37bd5b9788924e30eb837b1` |
+| `SHA256SUMS.txt` | 187 | 内容与上表一致 |
+
+该 Release 在核验时 `isDraft=true`，因此下载入口在正式公开前不可用；许可证决定后再发布。
+
 ## 4. 构建验证
 
 ```powershell

@@ -50,7 +50,7 @@ HotkeyLens 是一款按需运行的 Windows 桌面工具，用于发现本机应
    Get-Content .\SHA256SUMS.txt
    ```
 
-   计算的哈希必须与 `HotkeyLens-Setup.exe` 对应行一致。
+   计算的哈希必须与 `SHA256SUMS.txt` 中 `HotkeyLens-Setup.exe` 对应行一致。
 3. 运行安装程序。它安装到当前用户，不要求管理员权限。
 4. 选择安装目录，以及是否创建桌面快捷方式。
 5. 可从安装完成页、开始菜单或桌面快捷方式启动 HotkeyLens。
