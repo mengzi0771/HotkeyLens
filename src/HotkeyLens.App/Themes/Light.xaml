@@ -1,0 +1,55 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- HotkeyLens light design system. All application surfaces resolve through these keys. -->
+    <Color x:Key="AppBackgroundColor">#F2F4F8</Color>
+    <Color x:Key="DialogShadowColor">#330B1220</Color>
+
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F2F4F8" />
+    <SolidColorBrush x:Key="WindowChromeBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="WindowChromeTextBrush" Color="#1B2430" />
+    <SolidColorBrush x:Key="WindowChromeHoverBrush" Color="#EEF2F7" />
+    <SolidColorBrush x:Key="WindowChromeCloseHoverBrush" Color="#C42B1C" />
+    <SolidColorBrush x:Key="WindowBorderBrush" Color="#DDE3EC" />
+
+    <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="SidebarHoverBrush" Color="#F3F6FA" />
+    <SolidColorBrush x:Key="SidebarSelectedBrush" Color="#EAF2FD" />
+    <SolidColorBrush x:Key="SidebarTextBrush" Color="#1C2635" />
+    <SolidColorBrush x:Key="SidebarMutedBrush" Color="#6B7586" />
+    <SolidColorBrush x:Key="SidebarCardBackgroundBrush" Color="#F7F9FC" />
+    <SolidColorBrush x:Key="SidebarCardBorderBrush" Color="#E4EAF2" />
+    <SolidColorBrush x:Key="SidebarDividerBrush" Color="#E8EDF4" />
+
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="SurfaceMutedBrush" Color="#F7F9FC" />
+    <SolidColorBrush x:Key="SurfaceStrongBrush" Color="#EEF2F7" />
+    <SolidColorBrush x:Key="CardHoverBrush" Color="#F8FAFD" />
+    <SolidColorBrush x:Key="BorderBrush" Color="#E2E7EF" />
+    <SolidColorBrush x:Key="BorderStrongBrush" Color="#CAD3E0" />
+
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#17202E" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#5C6879" />
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="#8792A3" />
+
+    <SolidColorBrush x:Key="AccentBrush" Color="#0F6CBD" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#0B5A9F" />
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="#E7F1FC" />
+    <SolidColorBrush x:Key="AccentTextBrush" Color="#0B5CAB" />
+    <SolidColorBrush x:Key="OnAccentBrush" Color="#FFFFFF" />
+
+    <SolidColorBrush x:Key="SuccessBrush" Color="#137A5B" />
+    <SolidColorBrush x:Key="SuccessSoftBrush" Color="#E4F5EF" />
+    <SolidColorBrush x:Key="WarningBrush" Color="#9A6208" />
+    <SolidColorBrush x:Key="WarningSoftBrush" Color="#FCF3DF" />
+    <SolidColorBrush x:Key="DangerBrush" Color="#B42318" />
+    <SolidColorBrush x:Key="DangerSoftBrush" Color="#FDECEA" />
+
+    <SolidColorBrush x:Key="InputBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="SelectionBrush" Color="#EAF2FD" />
+    <SolidColorBrush x:Key="OverlayBrush" Color="#660C1422" />
+    <SolidColorBrush x:Key="WhiteBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="SwitchThumbBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ScrollThumbBrush" Color="#C9D1DE" />
+    <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="#9AA8BA" />
+    <SolidColorBrush x:Key="ChartGridBrush" Color="#ECF0F6" />
+</ResourceDictionary>

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>HotkeyLens.App</RootNamespace>
+    <AssemblyName>HotkeyLens</AssemblyName>
+    <ApplicationIcon>Assets\HotkeyLens.ico</ApplicationIcon>
+    <StartupObject>HotkeyLens.App.App</StartupObject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HotkeyLens.Core\HotkeyLens.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\HotkeyLens.ico" />
+  </ItemGroup>
+
+</Project>

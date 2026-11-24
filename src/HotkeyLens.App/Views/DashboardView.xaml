@@ -1,0 +1,353 @@
+<UserControl x:Class="HotkeyLens.App.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <Grid>
+        <!-- 首次启动：不展示任何虚构统计 -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      Visibility="{Binding IsWelcomeVisible, Converter={StaticResource BoolToVisibility}}">
+            <Grid Margin="0,4,0,16">
+                <Border Style="{StaticResource CardBorder}" Padding="0" ClipToBounds="True">
+                    <Grid MinHeight="430">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.35*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Margin="38,36,30,34" VerticalAlignment="Center">
+                            <Border Background="{DynamicResource AccentSoftBrush}" CornerRadius="8" Padding="9,4"
+                                    HorizontalAlignment="Left">
+                                <TextBlock Text="DISCOVER EVERY SHORTCUT" FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentTextBrush}" />
+                            </Border>
+                            <TextBlock Text="本机快捷键，一次看清" FontFamily="{StaticResource DisplayFontFamily}"
+                                       FontSize="34" FontWeight="SemiBold" Margin="0,15,0,0" />
+                            <TextBlock Text="HotkeyLens 读取应用清单与可访问的快捷键配置，把每一条绑定、来源证据和潜在冲突放进同一个索引。"
+                                       TextWrapping="Wrap" FontSize="13.5" LineHeight="23" MaxWidth="520"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,12,0,0" />
+
+                            <StackPanel Margin="0,24,0,0">
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="26" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="&#xE71D;" FontFamily="{StaticResource IconFontFamily}" FontSize="13"
+                                               Foreground="{DynamicResource AccentBrush}" />
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="真实发现本机应用" FontWeight="SemiBold" FontSize="12.5" />
+                                        <TextBlock Text="注册表、开始菜单、App Paths 与系统组件，去重后统一展示。"
+                                                   Style="{StaticResource MutedText}" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="26" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="&#xE8A5;" FontFamily="{StaticResource IconFontFamily}" FontSize="13"
+                                               Foreground="{DynamicResource AccentBrush}" />
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="多种来源交叉读取" FontWeight="SemiBold" FontSize="12.5" />
+                                        <TextBlock Text="快捷方式热键、用户配置文件、安全 XML、官方文档目录与 UI Automation。"
+                                                   Style="{StaticResource MutedText}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="26" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="&#xE9D9;" FontFamily="{StaticResource IconFontFamily}" FontSize="13"
+                                               Foreground="{DynamicResource AccentBrush}" />
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="每条结论都有依据" FontWeight="SemiBold" FontSize="12.5" />
+                                        <TextBlock Text="区分官方默认与用户配置，标注可信度；无法读取的应用也会明确说明原因。"
+                                                   Style="{StaticResource MutedText}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,28,0,0">
+                                <Button Style="{StaticResource PrimaryButton}" Command="{Binding ScanCommand}" MinWidth="150">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE721;" FontFamily="{StaticResource IconFontFamily}" FontSize="12"
+                                                   Foreground="{DynamicResource OnAccentBrush}" VerticalAlignment="Center" />
+                                        <TextBlock Text="开始扫描" Foreground="{DynamicResource OnAccentBrush}" Margin="8,0,0,0" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock Text="不会在后台自动运行" Style="{StaticResource CaptionText}" VerticalAlignment="Center"
+                                           Margin="14,0,0,0" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Border Grid.Column="1" Background="{DynamicResource SurfaceMutedBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="26">
+                                <TextBlock Text="一条快捷键，三层证据" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                                <TextBlock Text="示例键位，仅用于展示界面" FontSize="9.5" Margin="0,4,0,18"
+                                           Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" />
+
+                                <Border Style="{StaticResource CardBorder}" Padding="22,20" Width="306">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <Border Background="{DynamicResource SurfaceStrongBrush}" CornerRadius="8"
+                                                    BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" Padding="12,7">
+                                                <TextBlock Text="Ctrl" FontFamily="{StaticResource MonoFontFamily}" FontSize="12"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}" />
+                                            </Border>
+                                            <TextBlock Text="+" FontFamily="{StaticResource MonoFontFamily}" FontSize="12"
+                                                       Foreground="{DynamicResource TextTertiaryBrush}" Margin="8,0"
+                                                       VerticalAlignment="Center" />
+                                            <Border Background="{DynamicResource SurfaceStrongBrush}" CornerRadius="8"
+                                                    BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" Padding="12,7">
+                                                <TextBlock Text="K" FontFamily="{StaticResource MonoFontFamily}" FontSize="12"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}" />
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Text="打开命令面板" FontWeight="SemiBold" FontSize="13" Margin="0,14,0,0"
+                                                   HorizontalAlignment="Center" />
+                                        <TextBlock Text="Visual Studio Code · 窗口内" Style="{StaticResource CaptionText}"
+                                                   HorizontalAlignment="Center" Margin="0,4,0,0" />
+
+                                        <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,16,0,12" />
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="58" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="来源" Style="{StaticResource CaptionText}" />
+                                            <TextBlock Grid.Column="1" Text="官方快捷键目录" FontSize="10.5"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBlock Grid.Row="1" Text="范围" Style="{StaticResource CaptionText}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="窗口内快捷键" FontSize="10.5"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="2" Text="可信度" Style="{StaticResource CaptionText}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="中 · 官方默认，未必是当前配置" FontSize="10.5"
+                                                       TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,7,0,0" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- 有快照时展示真实统计 -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      Visibility="{Binding HasSnapshot, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel Margin="0,2,0,18">
+                <Grid Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="上次扫描结果" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding LastScanDetail}" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Border Style="{StaticResource BadgeBorder}" Background="{DynamicResource SuccessSoftBrush}" Margin="0,0,8,0">
+                            <TextBlock Text="{Binding LastScanText}" FontSize="10.5" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SuccessBrush}" />
+                        </Border>
+                        <Border Style="{StaticResource BadgeBorder}">
+                            <TextBlock Text="{Binding OriginSummary}" FontSize="10.5"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                        </Border>
+                    </StackPanel>
+                </Grid>
+
+                <UniformGrid Columns="5" Margin="0,0,0,12">
+                    <Border Style="{StaticResource CardBorder}" Padding="16" Margin="0,0,9,0">
+                        <StackPanel>
+                            <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource AccentSoftBrush}"
+                                    HorizontalAlignment="Left">
+                                <TextBlock Text="&#xE71D;" FontFamily="{StaticResource IconFontFamily}" FontSize="13"
+                                           Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Text="{Binding TotalApplications}" Style="{StaticResource MetricValueText}" Margin="0,10,0,0" />
+                            <TextBlock Text="已发现应用程序" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CardBorder}" Padding="16" Margin="0,0,9,0">
+                        <StackPanel>
+                            <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource AccentSoftBrush}"
+                                    HorizontalAlignment="Left">
+                                <TextBlock Text="&#xE765;" FontFamily="{StaticResource IconFontFamily}" FontSize="13"
+                                           Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Text="{Binding TotalShortcuts}" Style="{StaticResource MetricValueText}" Margin="0,10,0,0" />
+                            <TextBlock Text="已识别快捷键" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CardBorder}" Padding="16" Margin="0,0,9,0">
+                        <StackPanel>
+                            <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource WarningSoftBrush}"
+                                    HorizontalAlignment="Left">
+                                <TextBlock Text="&#xE8C8;" FontFamily="{StaticResource IconFontFamily}" FontSize="13"
+                                           Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Text="{Binding DuplicateGroups}" Style="{StaticResource MetricValueText}" Margin="0,10,0,0" />
+                            <TextBlock Text="重复绑定组" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CardBorder}" Padding="16" Margin="0,0,9,0">
+                        <StackPanel>
+                            <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource WarningSoftBrush}"
+                                    HorizontalAlignment="Left">
+                                <TextBlock Text="&#xE7BA;" FontFamily="{StaticResource IconFontFamily}" FontSize="13"
+                                           Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Text="{Binding PotentialConflicts}" Style="{StaticResource MetricValueText}" Margin="0,10,0,0" />
+                            <TextBlock Text="潜在冲突" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CardBorder}" Padding="16">
+                        <StackPanel>
+                            <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource DangerSoftBrush}"
+                                    HorizontalAlignment="Left">
+                                <TextBlock Text="&#xE72E;" FontFamily="{StaticResource IconFontFamily}" FontSize="13"
+                                           Foreground="{DynamicResource DangerBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Text="{Binding GlobalCompetitions}" Style="{StaticResource MetricValueText}" Margin="0,10,0,0" />
+                            <TextBlock Text="全局注册竞争" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.08*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Style="{StaticResource CardBorder}">
+                        <StackPanel>
+                            <Grid>
+                                <TextBlock Text="扫描覆盖" Style="{StaticResource SectionTitle}" />
+                                <Border Style="{StaticResource BadgeBorder}" Background="{DynamicResource SuccessSoftBrush}"
+                                        HorizontalAlignment="Right">
+                                    <TextBlock Text="读取完成" FontSize="10" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource SuccessBrush}" />
+                                </Border>
+                            </Grid>
+                            <TextBlock Text="{Binding CoverageText}" Style="{StaticResource MutedText}" Margin="0,5,0,14"
+                                       TextWrapping="Wrap" />
+
+                            <Border Style="{StaticResource SoftCardBorder}" Background="{DynamicResource SurfaceStrongBrush}"
+                                    BorderThickness="0" Padding="12,11">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding ScannedApplications}" FontWeight="SemiBold" FontSize="16" />
+                                        <TextBlock Text="读到快捷键" Style="{StaticResource CaptionText}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding NoShortcutsApplications}" FontWeight="SemiBold" FontSize="16" />
+                                        <TextBlock Text="配置为空" Style="{StaticResource CaptionText}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="{Binding NotScannableApplications}" FontWeight="SemiBold" FontSize="16" />
+                                        <TextBlock Text="无法读取" Style="{StaticResource CaptionText}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3">
+                                        <TextBlock Text="{Binding FailedApplications}" FontWeight="SemiBold" FontSize="16" />
+                                        <TextBlock Text="读取失败" Style="{StaticResource CaptionText}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <TextBlock Text="扫描范围" Style="{StaticResource FieldLabel}" Margin="0,15,0,5" />
+                            <TextBlock Text="应用发现 · 快捷方式热键 · 用户配置文件 · 官方默认目录 · 当前窗口菜单"
+                                       TextWrapping="Wrap" FontSize="11.5" LineHeight="18"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBlock Text="UI Automation 只读取已经打开的窗口，不会启动应用或展开菜单。"
+                                       TextWrapping="Wrap" FontSize="10.5" Margin="0,7,0,0"
+                                       Foreground="{DynamicResource TextTertiaryBrush}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="2" Style="{StaticResource CardBorder}">
+                        <StackPanel>
+                            <TextBlock Text="快捷键构成" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="按作用范围与配置来源拆分" Style="{StaticResource MutedText}" Margin="0,4,0,10" />
+
+                            <ItemsControl ItemsSource="{Binding ScopeDistribution}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="70" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="48" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Label}" FontSize="10.5"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <ProgressBar Grid.Column="1" Maximum="100" Value="{Binding Percent}"
+                                                         Foreground="{Binding AccentHex}" Height="5" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="{Binding Count}" HorizontalAlignment="Right"
+                                                       FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,5,0,9" />
+                            <ItemsControl ItemsSource="{Binding OriginDistribution}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="70" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="48" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Label}" FontSize="10.5"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <ProgressBar Grid.Column="1" Maximum="100" Value="{Binding Percent}"
+                                                         Foreground="{Binding AccentHex}" Height="5" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="{Binding Count}" HorizontalAlignment="Right"
+                                                       FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Border Style="{StaticResource CardBorder}" Padding="18,15">
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock Text="继续查看" FontWeight="SemiBold" FontSize="12.5" />
+                            <TextBlock Text="从列表核对具体按键，或集中处理重复绑定与潜在冲突。"
+                                       Style="{StaticResource MutedText}" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <Button Style="{StaticResource SecondaryButton}" Content="打开快捷键列表"
+                                    Command="{Binding NavigateCommand}" CommandParameter="Shortcuts" Margin="0,0,8,0" />
+                            <Button Style="{StaticResource PrimaryButton}" Content="查看冲突分析"
+                                    Command="{Binding NavigateCommand}" CommandParameter="Conflicts" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <TextBlock Text="HotkeyLens 只读取可访问的配置和界面信息，不修改其他应用设置，也不会在后台持续监听键盘。"
+                           Style="{StaticResource CaptionText}" Margin="2,12,0,0" TextWrapping="Wrap" />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

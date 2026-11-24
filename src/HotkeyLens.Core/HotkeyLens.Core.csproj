@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>HotkeyLens.Core</RootNamespace>
+    <AssemblyName>HotkeyLens.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Data\official-shortcuts.json" />
+  </ItemGroup>
+
+</Project>
