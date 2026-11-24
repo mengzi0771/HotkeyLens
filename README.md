@@ -2,202 +2,204 @@
 
 > Discover Every Shortcut.
 
-HotkeyLens 是一款按需运行的 Windows 桌面工具，用于发现本机应用、读取可访问的快捷键配置、记录每条记录的来源与可信度，并区分真实的全局快捷键竞争、重复绑定和潜在冲突。
+**English** | [简体中文](README.zh-CN.md)
 
-它不会在后台常驻，不会持续监听键盘，也不会伪造扫描结果。所有扫描结果只保存在本机。
+HotkeyLens is an on-demand Windows desktop tool for discovering installed applications, reading accessible shortcut configurations, recording where every binding came from, and distinguishing proven global-hotkey competition, duplicate bindings, and potential conflicts.
 
-![HotkeyLens 总览（浅色）](docs/screenshots/dashboard-light.png)
+It does not run in the background, does not continuously monitor the keyboard, and does not fabricate scan results. All scan data stays on your machine.
 
-## 目录
+![HotkeyLens dashboard in the light theme](docs/screenshots/dashboard-light.png)
 
-- [项目状态](#项目状态)
-- [核心能力](#核心能力)
-- [如何读取快捷键](#如何读取快捷键)
-- [数据模型](#数据模型)
-- [冲突分析](#冲突分析)
-- [界面](#界面)
-- [技术架构](#技术架构)
-- [构建与运行](#构建与运行)
-- [数据与隐私](#数据与隐私)
-- [测试](#测试)
-- [已知限制](#已知限制)
-- [后续方向](#后续方向)
-- [文档](#文档)
+## Contents
 
-## 项目状态
+- [Project status](#project-status)
+- [Core capabilities](#core-capabilities)
+- [How shortcuts are read](#how-shortcuts-are-read)
+- [Data model](#data-model)
+- [Conflict analysis](#conflict-analysis)
+- [Interface](#interface)
+- [Architecture](#architecture)
+- [Build and run](#build-and-run)
+- [Data and privacy](#data-and-privacy)
+- [Testing](#testing)
+- [Known limitations](#known-limitations)
+- [Roadmap](#roadmap)
+- [Documentation](#documentation)
 
-- 平台：Windows 10 / Windows 11（x64）
-- 技术栈：C# / .NET 10 / WPF / Windows UI Automation
-- 当前版本：1.0.0
-- 自动化测试：67 / 67 通过
-- 当前状态：可直接编译运行；快捷键管理仅提供安全的只读定位，不自动改写第三方配置
+## Project status
 
-## 核心能力
+- Platform: Windows 10 / Windows 11 (x64)
+- Stack: C# / .NET 10 / WPF / Windows UI Automation
+- Current version: 1.0.0
+- Automated tests: 67 / 67 passing
+- Status: builds and runs today. Shortcut management is intentionally limited to safe, read-only navigation to an application's settings or configuration source; HotkeyLens does not rewrite third-party configurations.
 
-### 1. 应用程序发现
+## Core capabilities
 
-从多个只读数据源合并候选应用：
+### 1. Application discovery
 
-- Windows 卸载信息（HKLM/HKCU，64 位和 32 位视图）
+Candidates are merged from several read-only sources:
+
+- Windows uninstall entries (HKLM/HKCU, 64-bit and 32-bit views)
 - `App Paths`
-- 开始菜单与桌面快捷方式
-- Windows 内置 Shell 应用
+- Start Menu and desktop shortcuts
+- Windows built-in Shell applications
 
-合并时优先按规范化后的可执行文件路径去重；没有路径时再按名称和发布者判断。运行时、更新器、安装器等非应用组件会被排除。可执行文件的 `FileDescription` 优先于含义模糊的 `ProductName`，避免多个 Microsoft Office 组件显示成同一个名字。
+Executables are deduplicated by normalized path; when no path is available, name and publisher are used instead. Runtimes, updaters, installers, and other non-application components are filtered out. A meaningful executable `FileDescription` takes priority over an ambiguous `ProductName`, preventing several Microsoft Office components from appearing under the same name.
 
-界面对每个应用保留扫描状态：`已扫描`、`未发现快捷键`、`无法自动读取`、`扫描失败`。没有读取到快捷键不等于该应用没有快捷键，界面和文档都会明确这一点。
+Every discovered application keeps an explicit scan state: `Scanned`, `No shortcuts found`, `Not automatically readable`, or `Scan failed`. Finding no shortcuts never means the application has none, and both the UI and documentation say so explicitly.
 
-### 2. 快捷键来源适配器
+### 2. Shortcut source adapters
 
-扫描引擎不依赖任何单一软件。每种来源实现为独立的适配器，通过统一接口返回快捷键、覆盖范围和诊断信息：
+The scan engine does not depend on any single application. Each source is an independent adapter behind one interface, returning bindings, scope, and diagnostics:
 
-| 适配器 | 读取对象 | 识别范围 | 来源类型 | 典型可信度 |
+| Adapter | Input | Effective scope | Source type | Typical confidence |
 |---|---|---|---|---|
-| 快捷方式热键 | 开始菜单/桌面 `.lnk` 的 `HotKey` 字段 | 全局 | 实际配置 | 高 |
-| VS Code 配置 | `keybindings.json`（VS Code / Insiders / VSCodium / Cursor） | 窗口/上下文 | 实际配置 | 高 |
-| Windows Terminal | `settings.json` 的 `actions` 与旧版 `keybindings` | 窗口/上下文 | 实际配置 | 高 |
-| JetBrains IDE | 用户 keymap XML 中显式覆盖的 `keyboard-shortcut` | 窗口 | 实际配置 | 高 |
-| Notepad++ | `%APPDATA%\Notepad++\shortcuts.xml` | 窗口 | 实际配置 | 高 |
-| Windows UI Automation | 当前已打开窗口的菜单项 `AcceleratorKey` | 窗口 | 运行时观察 | 中 |
-| 内置官方目录 | 随程序打包的官方快捷键文档摘要 | 文档声明的范围 | 官方默认 | 中 |
+| Shortcut hotkeys | `HotKey` field of Start Menu / desktop `.lnk` files | Global | User configuration | High |
+| VS Code configuration | `keybindings.json` (VS Code / Insiders / VSCodium / Cursor) | Window / context | User configuration | High |
+| Windows Terminal | `actions` and legacy `keybindings` in `settings.json` | Window / context | User configuration | High |
+| JetBrains IDEs | Explicit `keyboard-shortcut` overrides in user keymap XML | Window | User configuration | High |
+| Notepad++ | `%APPDATA%\Notepad++\shortcuts.xml` | Window | User configuration | High |
+| Windows UI Automation | Accessible menu-item `AcceleratorKey` in open windows | Window | Runtime observation | Medium |
+| Built-in official catalog | Bundled summaries of official shortcut documentation | As documented | Official defaults | Medium |
 
-内置官方目录当前覆盖 VS Code、Windows Terminal、JetBrains IDE、Notepad++ 和 Windows Shell。条目附带官方文档 URL；它表示“官方默认值”，不代表用户当前实际配置。
+The built-in catalog currently covers VS Code, Windows Terminal, JetBrains IDEs, Notepad++ and Windows Shell. Every entry carries its official documentation URL. It represents documented defaults, not the user's current configuration.
 
-适配器只会读取文件或 UI Automation 暴露的属性，不启动被扫描的应用，不展开菜单，不安装键盘钩子，不修改其他应用配置。
+Adapters only read files or properties exposed by UI Automation. They do not launch scanned applications, expand menus, install keyboard hooks, or modify other applications' settings.
 
-### 3. 搜索与筛选
+### 3. Search and filtering
 
-快捷键页面支持：
+The Shortcuts page supports:
 
-- 搜索按键组合、应用名、功能、描述、来源、可信度依据和原始值
-- 按应用、应用分类、作用范围、来源、可信度、来源类型筛选
-- 只查看涉及冲突/重复的条目
-- 按组合、应用、功能、范围、可信度或来源排序
-- 按应用程序分组
-- 打开单条快捷键的详情与来源位置
+- Searching key gestures, application names, actions, descriptions, sources, confidence rationale, and raw values
+- Filtering by application, application category, scope, source, confidence, and source type
+- Showing only shortcuts involved in conflicts or duplicate groups
+- Sorting by gesture, application, action, scope, confidence, or source
+- Grouping by application
+- Opening details and the original source location for an individual shortcut
 
-搜索结果由 `ShortcutQuery` 在内存中计算，使用当前快照，不重复访问磁盘或系统。
+Filtering is performed in memory by `ShortcutQuery` against the current snapshot; it does not re-read files or system state on each keystroke.
 
-### 4. 冲突分析
+### 4. Conflict analysis
 
-相同按键组合并不自动等于冲突。HotkeyLens 按以下证据规则分类：
+The same key combination does not automatically mean a conflict. HotkeyLens classifies findings by evidence:
 
-| 类型 | 判定条件 | 含义 |
+| Type | Condition | Meaning |
 |---|---|---|
-| 全局快捷键竞争 | 两个及以上应用都声明为全局，且都有 `.lnk` 热键注册证据 | 多个程序可能尝试注册同一个全局热键 |
-| 潜在冲突 | 至少一个绑定是全局或作用范围未知 | 某些场景下可能互相干扰，但证据不足 |
-| 重复绑定 | 所有涉及绑定都位于各自窗口/应用内部 | 各应用内可独立使用，通常不构成实际冲突 |
+| Global hotkey competition | Two or more applications declare a binding as global, and each has `.lnk` registration evidence | Multiple programs may try to register the same global hotkey |
+| Potential conflict | At least one binding is global or has unknown scope | Interference is possible in some situations, but evidence is insufficient |
+| Duplicate binding | Every participating binding is local to its own window or application | The applications can normally use the key independently |
 
-作用范围未知时会降低结论等级，不会把未知包装成已确认。每条冲突显示参与应用、功能、范围、判断依据、可信度和建议处理方式。
+Unknown scope lowers the conclusion; it is never presented as confirmed. Each result shows the participating applications, actions, scopes, rationale, confidence, and recommended handling.
 
-## 如何读取快捷键
+## How shortcuts are read
 
-HotkeyLens 使用以下合法、只读的静态来源：
+HotkeyLens uses the following legitimate, read-only sources:
 
-1. **应用发现**：注册表卸载项、`App Paths`、开始菜单和桌面快捷方式。
-2. **配置读取**：解析已知应用的用户配置；只读，不写回。
-3. **快捷方式热键**：读取 `.lnk` 的 Shell Link 头字段，而不是模拟按键。
-4. **UI Automation**：只检查当前已打开窗口可访问的菜单属性和 `AcceleratorKey`，受超时和窗口数量限制。
-5. **官方文档目录**：随程序嵌入、带来源 URL 的默认快捷键摘要。
+1. **Application discovery:** uninstall registry keys, `App Paths`, Start Menu and desktop shortcuts.
+2. **Configuration files:** user configuration for known applications; read-only, never written back.
+3. **Shortcut hotkeys:** the Shell Link header field, not simulated key presses.
+4. **UI Automation:** only menu properties and `AcceleratorKey` exposed by currently open windows, bounded by a timeout and window limit.
+5. **Official documentation catalog:** embedded default-shortcut summaries with their source URLs.
 
-Windows 没有公开 API 可以枚举其他进程已注册的全部全局快捷键。HotkeyLens 不通过 `RegisterHotKey` 枚举，也不使用 `WH_KEYBOARD_LL`。详见 [docs/LIMITATIONS.md](docs/LIMITATIONS.md)。
+Windows has no public API for enumerating every global hotkey registered by other processes. HotkeyLens does not use `RegisterHotKey` for enumeration and does not use `WH_KEYBOARD_LL`. See [docs/LIMITATIONS.md](docs/LIMITATIONS.md) for the technical boundaries.
 
-## 数据模型
+## Data model
 
-每条 `ShortcutEntry` 至少包含：
+Each `ShortcutEntry` records:
 
-- 规范化按键组合（`ShortcutGesture`），以及可选的完整按键序列
-- 所属应用与功能名称、描述
-- 作用范围：全局、应用内、窗口内、上下文相关、未知
-- 来源类型与来源位置
-- 可信度与判断理由
-- 来源身份：官方默认、实际配置、运行时观察、未知
-- 上下文、原始值、扫描时间、是否生效
+- A normalized gesture (`ShortcutGesture`) and, when applicable, the full key sequence
+- Application, action name, and description
+- Scope: global, application, window, contextual, or unknown
+- Source type and source location
+- Confidence and the rationale behind it
+- Origin: official default, user configuration, runtime observation, or unknown
+- Context, raw value, capture time, and enabled state
 
-### 明确区分“默认值”和“实际配置”
+### Defaults vs. actual configuration
 
-- `OfficialDefault`：来自官方文档，可能是默认值，也可能随版本变化。
-- `UserConfigured`：从本机实际配置文件或快捷方式中读到；表示“本机已配置”，不保证由用户手工编辑。
-- `RuntimeObserved`：扫描时从当前 UI 观察到。
-- `Unknown`：来源不足，不强行归类。
+- `OfficialDefault`: read from official documentation. It may be a default and may vary by version.
+- `UserConfigured`: read from an actual file or shortcut on this machine. It means "configured locally", not necessarily edited by hand.
+- `RuntimeObserved`: observed from the current UI at scan time.
+- `Unknown`: insufficient evidence; it is not forced into another category.
 
-### 按键序列
+### Key sequences
 
-`Ctrl+K Ctrl+S` 这样的组合会保存为完整序列 `KeySequence`，同时用首段 `Ctrl+K` 参与普通按键匹配。序列不会被当作一次按键的全局热键，也不会直接参与冲突判定。
+A chord such as `Ctrl+K Ctrl+S` is stored as a full `KeySequence` while the first stroke, `Ctrl+K`, participates in ordinary gesture matching. A sequence is not treated as a single global hotkey, and it is excluded from conflict analysis.
 
-## 冲突分析
+## Conflict analysis
 
-分析器只比较不同应用之间的同一按键组合，不会把同一应用内的多个绑定误判为互相冲突。禁用条目和多段序列会被排除。每个应用先选出最有证据的代表条目，再根据作用范围和来源得出冲突类型。
+The analyzer only compares the same gesture across different applications. Multiple bindings inside one application are not treated as conflicting. Disabled entries and multi-stroke sequences are excluded. For each application, the entry with the strongest evidence is selected before scope and source determine the result type.
 
-冲突结果不是系统级注册表事实，而是基于可读证据的推断；界面会说明依据，不会承诺“已确认某个热键被抢占”。
+Results are evidence-based inferences, not registry facts. The UI explains the reasoning and never claims that a hotkey has definitively been "stolen".
 
-## 界面
+## Interface
 
-五个页面共享同一套视图模型和扫描快照：
+Five pages share one view model and scan snapshot:
 
-- **总览**：应用数、快捷键数、重复组、潜在冲突、全局竞争、扫描时间和覆盖情况。
-- **快捷键**：搜索、筛选、排序、分组、列表和详情面板。
-- **应用程序**：应用分类、图标、版本、状态、路径和设置位置。
-- **冲突分析**：按冲突类型、严重度和可信度展示依据与建议。
-- **设置**：浅色/深色/跟随系统、扫描来源开关、超时与窗口上限、数据管理和关于。
+- **Dashboard:** applications, shortcuts, duplicate groups, potential conflicts, global competition, last scan time, and coverage.
+- **Shortcuts:** search, filters, sorting, grouping, list, and a detail panel.
+- **Applications:** categories, icons, versions, scan state, paths, and settings locations.
+- **Conflicts:** evidence and recommendations grouped by type, severity, and confidence.
+- **Settings:** light/dark/system theme, scan-source toggles, timeout and window limits, data management, and about.
 
-主题由统一的资源字典提供。切换主题会立即应用并自动保存，不需要重启。浅色主题使用白色侧栏、浅灰工作区和白色卡片；深色主题使用中性炭黑、深灰卡片和单一蓝色强调。
+Themes are provided by shared resource dictionaries. Changing a theme applies immediately across the whole window and is saved automatically; no restart is required. The light theme uses a white sidebar, a light-gray workspace, and white cards. The dark theme uses neutral charcoal panels, dark-gray cards, and a single blue accent.
 
-| 快捷键（浅色） | 应用程序（深色） | 设置（深色） |
+| Shortcuts (light) | Applications (dark) | Settings (dark) |
 |---|---|---|
-| ![快捷键列表](docs/screenshots/shortcuts-light.png) | ![应用程序](docs/screenshots/applications-dark.png) | ![设置](docs/screenshots/settings-dark.png) |
+| ![Shortcut list](docs/screenshots/shortcuts-light.png) | ![Applications](docs/screenshots/applications-dark.png) | ![Settings](docs/screenshots/settings-dark.png) |
 
-## 技术架构
+## Architecture
 
 ```
 HotkeyLens.App (WPF/MVVM)
-        │
-        ├── Views / ViewModels / Themes
-        └── App 装配、单实例、生命周期
-                 │
-                 ▼
+        |
+        +-- Views / ViewModels / Themes
+        +-- composition, single instance, lifecycle
+                 |
+                 v
 HotkeyLens.Core
-  Discovery → ScanEngine → Analysis → Query
-                  │
-                  ├── Adapters (7 类来源)
-                  ├── Models / Catalog
-                  └── Persistence (JSON)
+  Discovery -> ScanEngine -> Analysis -> Query
+                  |
+                  +-- Adapters (7 source types)
+                  +-- Models / Catalog
+                  +-- Persistence (JSON)
 ```
 
-- **Core** 负责模型、应用发现、扫描协调、来源适配器、冲突分析、查询和持久化。
-- **App** 负责 WPF 界面、MVVM、主题、窗口生命周期、图标加载和文件定位。
-- 扫描引擎只依赖 `IApplicationDiscoveryService` 与 `IShortcutSourceAdapter`；新增软件支持只需增加适配器，不修改引擎。
-- 扫描在后台异步执行，UI 通过进度回调更新；关闭窗口会取消扫描并释放单实例锁，不留下后台服务或托盘进程。
+- **Core** owns models, application discovery, scan orchestration, source adapters, conflict analysis, querying, and persistence.
+- **App** owns the WPF UI, MVVM, themes, window lifecycle, icon loading, and file-location actions.
+- The scan engine depends only on `IApplicationDiscoveryService` and `IShortcutSourceAdapter`. Supporting a new application means adding an adapter, not changing the engine.
+- Scanning runs asynchronously in the background with progress callbacks. Closing the window cancels scanning and releases the single-instance lock; no service or tray process remains.
 
-详细说明见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full design.
 
-## 构建与运行
+## Build and run
 
-### 开发环境
+### Requirements
 
-- Windows 10 或 Windows 11（x64）
-- .NET SDK 10.0.400 或更高版本（项目固定 `10.0.404`）
-- 可选：Visual Studio 2022/2026 的 .NET 桌面开发工作负载
+- Windows 10 or Windows 11 (x64)
+- .NET SDK 10.0.400 or later (the repository pins `10.0.404`)
+- Optional: the .NET desktop development workload in Visual Studio 2022/2026
 
 ```powershell
-git clone <your-repository-url>
+git clone https://github.com/mengzi0771/HotkeyLens.git
 cd HotkeyLens
 dotnet restore
 dotnet build HotkeyLens.sln -c Release
 dotnet run --project src/HotkeyLens.App/HotkeyLens.App.csproj -c Release
 ```
 
-构建后的可执行文件位于：
+The built executable is:
 
 ```
 src/HotkeyLens.App/bin/Release/net10.0-windows/HotkeyLens.exe
 ```
 
-该输出是框架依赖（framework-dependent）程序，运行机器需要 .NET 10 Desktop Runtime。开发机安装 SDK 后已包含所需运行时。
+This is a framework-dependent build; the target machine needs the .NET 10 Desktop Runtime. Installing the SDK on a development machine already provides it.
 
-### 数据位置
+### Local data
 
-默认数据目录：
+Default data directory:
 
 ```
 %LOCALAPPDATA%\HotkeyLens
@@ -205,64 +207,65 @@ src/HotkeyLens.App/bin/Release/net10.0-windows/HotkeyLens.exe
 └── preferences.json
 ```
 
-测试或诊断时可通过环境变量覆盖：
+For testing or diagnostics, override it with:
 
 ```powershell
 $env:HOTKEYLENS_DATA_DIR = 'D:\HotkeyLens-data'
 ```
 
-程序不会把数据写入安装目录或注册表。若安全软件阻止程序写入用户目录，界面会明确提示，且不会覆盖原有快照；请将 HotkeyLens 加入该安全软件的信任/放行列表，而不是依赖改名规避。
+HotkeyLens never writes data into its installation directory or the registry. If security software blocks writes to the user profile, the UI reports the failure and leaves the existing snapshot untouched. Add HotkeyLens to the security software's trusted/allowed list instead of working around the protection by changing filenames.
 
-## 数据与隐私
+## Data and privacy
 
-- 扫描只发生在用户点击扫描后。
-- 不采集遥测，不上传数据，不进行网络请求。
-- 不读取其他进程内存，不修改其他应用配置，不写系统注册表。
-- 详情页的“打开来源”“打开设置位置”只在用户点击时调用系统默认程序。
-- 关闭主窗口即退出；没有托盘图标、开机启动或常驻服务。
+- Scanning only happens after the user clicks Scan.
+- No telemetry, no data upload, and no background network access.
+- No reading of other process memory, no modification of other applications' settings, and no writes to the system registry.
+- "Open source" and "Open settings location" use the system default handler only when the user clicks them.
+- Closing the main window exits the application. There is no tray icon, startup task, or resident service.
 
-## 测试
+## Testing
 
 ```powershell
 dotnet test tests/HotkeyLens.Core.Tests/HotkeyLens.Core.Tests.csproj `
   --nologo -p:_MSTestEnableParentProcessQuery=false
 ```
 
-最近一次结果：
+Latest result:
 
 ```
-失败: 0，通过: 67，已跳过: 0，总计: 67
+Failed: 0, Passed: 67, Skipped: 0, Total: 67
 ```
 
-测试覆盖按键解析、真实应用发现冒烟、快捷方式头解析、来源目录、查询筛选、冲突规则、扫描引擎状态机、快照/偏好持久化、并发保存和保存失败保护。
+Coverage includes gesture parsing, real application-discovery smoke tests, shortcut-header parsing, the built-in catalog, query filtering, conflict rules, scan-engine state transitions, snapshot/preference persistence, concurrent saves, and failed-save protection.
 
-界面验收使用真实扫描数据和 Windows UI Automation 操作完成，覆盖五页导航、搜索、详情、主题切换、首次扫描、覆盖保存、失败保护、重启恢复和退出行为。详见 [docs/TESTING.md](docs/TESTING.md)。
+UI acceptance was performed with real scan data and Windows UI Automation, covering navigation across all five pages, search, details, theme switching, first scan, overwrite, failure protection, restart recovery, and clean exit. See [docs/TESTING.md](docs/TESTING.md) (Chinese).
 
-## 已知限制
+## Known limitations
 
-- Windows 不提供枚举其他进程全局热键的 API；无法披露系统里所有已注册的全局热键。
-- UI Automation 只能看到当前打开窗口暴露的信息；不会为扫描启动应用或展开菜单。
-- 官方文档只代表默认值，可能随软件版本变化，也不等于用户配置。
-- 内置官方目录只覆盖少量软件；未覆盖的软件会显示为“无法自动读取”，不会生成虚假数据。
-- 配置文件格式因版本而异；解析失败会记录诊断，不会猜测绑定。
-- 快捷键管理只提供设置页/配置来源定位，不自动改写第三方配置。
-- 当前机器上的保存路径可能被第三方安全软件拦截；程序会保留旧数据并给出可操作错误。
+- Windows provides no API for enumerating every global hotkey registered by other processes.
+- UI Automation can only see information exposed by currently open windows; HotkeyLens will not start applications or expand menus for scanning.
+- Official documentation describes defaults, may change between versions, and does not reflect user configuration.
+- The built-in catalog covers a small, verified set of applications. Uncovered applications are shown honestly as "Not automatically readable"; no synthetic data is produced.
+- Configuration formats vary by version. Parse failures are recorded as diagnostics instead of being guessed.
+- Shortcut management only locates settings or configuration sources. It does not automatically rewrite third-party configuration.
+- On some machines, security software may block writes to the user profile. HotkeyLens preserves existing data and gives an actionable error instead of hiding the failure.
 
-完整清单见 [docs/LIMITATIONS.md](docs/LIMITATIONS.md)。
+The complete list is in [docs/LIMITATIONS.md](docs/LIMITATIONS.md) (Chinese).
 
-## 后续方向
+## Roadmap
 
-- 增加更多经过核实的应用适配器（例如浏览器、通讯软件、设计工具），每个适配器附带官方来源和测试。
-- 为已确认支持的应用提供可回滚的配置编辑，并在修改前自动备份。
-- 增加冲突分析与当前窗口的联动验证，但保持“证据优先”原则。
-- 改进 UI Automation 的覆盖策略，支持用户明确选择目标窗口后扫描菜单层级。
-- 导出快捷键清单为 CSV/JSON，便于团队审阅。
+- Add more verified application adapters (browsers, communication tools, design tools), each with official sources and tests.
+- Add rollback-capable configuration editing for applications that explicitly support it, with automatic backups.
+- Link conflict analysis with live window verification while keeping the evidence-first principle.
+- Improve UI Automation coverage by letting the user choose a target window before scanning its menu hierarchy.
+- Export shortcut inventories as CSV/JSON for team review.
 
-## 文档
+## Documentation
 
-- [架构说明](docs/ARCHITECTURE.md)
-- [技术限制](docs/LIMITATIONS.md)
-- [测试说明](docs/TESTING.md)
-- [截图目录](docs/screenshots)
+- [Architecture](docs/ARCHITECTURE.md) (Chinese)
+- [Technical limitations](docs/LIMITATIONS.md) (Chinese)
+- [Testing](docs/TESTING.md) (Chinese)
+- [Screenshot directory](docs/screenshots)
+- [简体中文 README](README.zh-CN.md)
 
-HotkeyLens 的核心原则是：**能证明的才展示，不能证明的明确标注。**
+HotkeyLens follows one rule: **show what can be proven, and label clearly what cannot.**
