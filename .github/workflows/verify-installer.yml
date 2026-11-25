@@ -32,47 +32,49 @@ jobs:
           --configuration Release --nologo -v:minimal
           -p:_MSTestEnableParentProcessQuery=false
 
-      - name: Build 1.0.0 packages
+      - name: Build 1.1.0 packages
         shell: pwsh
         run: >
           ./packaging/build-release.ps1
-          -Version '1.0.0'
+          -Version '1.1.0'
           -InnoCompiler 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
 
-      - name: Preserve 1.0.0 packages for verification and release
+      - name: Preserve 1.1.0 packages for verification and release
         shell: pwsh
         run: |
-          $staging = Join-Path $PWD 'artifacts\verify-v1.0.0'
+          $staging = Join-Path $PWD 'artifacts\verify-v1.1.0'
           New-Item -ItemType Directory -Path $staging -Force | Out-Null
           Copy-Item -LiteralPath 'artifacts\dist\HotkeyLens-Setup.exe' -Destination $staging
           Copy-Item -LiteralPath 'artifacts\dist\HotkeyLens-Portable-win-x64.zip' -Destination $staging
           Copy-Item -LiteralPath 'artifacts\dist\SHA256SUMS.txt' -Destination $staging
 
-      - name: Build 1.0.1 upgrade packages
+      - name: Build 1.1.1 upgrade packages
         shell: pwsh
         run: >
           ./packaging/build-release.ps1
-          -Version '1.0.1'
+          -Version '1.1.1'
           -InnoCompiler 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
 
       - name: Verify installer lifecycle
         shell: pwsh
         run: |
           ./packaging/verify-installer.ps1 `
-            -Setup 'artifacts\verify-v1.0.0\HotkeyLens-Setup.exe' `
+            -Setup 'artifacts\verify-v1.1.0\HotkeyLens-Setup.exe' `
             -UpgradeSetup 'artifacts\dist\HotkeyLens-Setup.exe' `
-            -PortableArchive 'artifacts\verify-v1.0.0\HotkeyLens-Portable-win-x64.zip' `
-            -Checksums 'artifacts\verify-v1.0.0\SHA256SUMS.txt' `
+            -PortableArchive 'artifacts\verify-v1.1.0\HotkeyLens-Portable-win-x64.zip' `
+            -Checksums 'artifacts\verify-v1.1.0\SHA256SUMS.txt' `
+            -ExpectedVersion '1.1.0' `
+            -UpgradeExpectedVersion '1.1.1' `
             -AllowDefaultDataSentinel
 
       - name: Upload verified release packages
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hotkeylens-v1.0.0
+          name: hotkeylens-v1.1.0
           path: |
-            artifacts/verify-v1.0.0/HotkeyLens-Setup.exe
-            artifacts/verify-v1.0.0/HotkeyLens-Portable-win-x64.zip
-            artifacts/verify-v1.0.0/SHA256SUMS.txt
+            artifacts/verify-v1.1.0/HotkeyLens-Setup.exe
+            artifacts/verify-v1.1.0/HotkeyLens-Portable-win-x64.zip
+            artifacts/verify-v1.1.0/SHA256SUMS.txt
           if-no-files-found: warn
           retention-days: 30

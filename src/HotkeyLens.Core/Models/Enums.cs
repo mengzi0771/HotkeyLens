@@ -83,7 +83,27 @@ public enum ConflictKind
     DuplicateBinding,
 
     /// <summary>Overlap is possible, but the available evidence cannot prove interference.</summary>
-    PotentialConflict
+    PotentialConflict,
+
+    /// <summary>Two different actions use the same chord in one application and overlapping scope.</summary>
+    SameApplicationOverlap,
+
+    /// <summary>The available evidence cannot determine whether the bindings overlap.</summary>
+    Unknown
+}
+
+/// <summary>
+/// The user-facing outcome of conflict analysis. This is deliberately separate
+/// from <see cref="ConflictKind"/>: the kind explains the mechanism, while the
+/// classification explains whether users should care.
+/// </summary>
+public enum ConflictClassification
+{
+    NoConflict,
+    NormalDuplicate,
+    PotentialConflict,
+    ConfirmedConflict,
+    Unknown
 }
 
 public enum ConflictSeverity

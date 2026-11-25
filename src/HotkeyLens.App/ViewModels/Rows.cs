@@ -31,6 +31,9 @@ public sealed class ShortcutRowViewModel
         : Entry.SourceReference;
     public bool HasSourceReference => !string.IsNullOrWhiteSpace(Entry.SourceReference);
     public string ContextText => string.IsNullOrWhiteSpace(Entry.Context) ? "无特定上下文" : Entry.Context;
+    public string ApplicabilityText => string.IsNullOrWhiteSpace(Entry.Applicability)
+        ? "未记录版本或平台适用范围"
+        : Entry.Applicability;
     public string ConfidenceRationale => string.IsNullOrWhiteSpace(Entry.ConfidenceRationale)
         ? "没有记录可信度依据。"
         : Entry.ConfidenceRationale;
@@ -44,10 +47,10 @@ public sealed class ShortcutRowViewModel
     public bool IsRuntimeObserved => Entry.Origin == ShortcutOrigin.RuntimeObserved;
 
     public int ConflictCount => _conflicts.Count;
-    public bool IsConflicting => _conflicts.Count > 0;
-    public string ConflictSummary => !IsConflicting
-        ? "未发现与其他应用的重复或潜在冲突。"
-        : $"参与 {_conflicts.Count} 组重复或冲突分析：{string.Join("、", _conflicts.Select(c => DisplayLabels.ConflictKindLabel(c.Kind)).Distinct())}";
+    public bool IsConflicting => _conflicts.Any(conflict => conflict.CountsAsConflict);
+    public string ConflictSummary => !_conflicts.Any()
+        ? "未发现与其他应用或同应用其他功能的重复按键组合。"
+        : $"参与 {_conflicts.Count} 组按键组合分析：{string.Join("、", _conflicts.Select(c => DisplayLabels.ConflictClassificationLabel(c.Classification)).Distinct())}";
 
     public IReadOnlyList<ConflictRowViewModel> RelatedConflicts =>
         _conflicts.Select(conflict => new ConflictRowViewModel(conflict)).ToList();
@@ -65,6 +68,7 @@ public sealed class ParticipantRowViewModel
         OriginLabel = DisplayLabels.Origin(participant.Origin);
         ConfidenceLabel = DisplayLabels.Confidence(participant.Confidence);
         SourceLabel = DisplayLabels.Source(participant.SourceKind);
+        ContextText = string.IsNullOrWhiteSpace(participant.Context) ? "无特定上下文" : participant.Context;
     }
 
     public string ApplicationName { get; }
@@ -73,6 +77,7 @@ public sealed class ParticipantRowViewModel
     public string OriginLabel { get; }
     public string ConfidenceLabel { get; }
     public string SourceLabel { get; }
+    public string ContextText { get; }
 
     public override string ToString() => $"{ApplicationName}，{ActionName}，{ScopeLabel}";
 }
@@ -89,17 +94,25 @@ public sealed class ConflictRowViewModel
 
     public ShortcutConflict Conflict { get; }
     public string GestureText => Conflict.Gesture.Display;
+    public string ClassificationLabel => DisplayLabels.ConflictClassificationLabel(Conflict.Classification);
     public string KindLabel => DisplayLabels.ConflictKindLabel(Conflict.Kind);
+    public string TypeLabel => DisplayLabels.ConflictTypeLabel(Conflict.Classification, Conflict.Kind);
     public string SeverityLabel => DisplayLabels.Severity(Conflict.Severity);
     public string ConfidenceLabel => DisplayLabels.Confidence(Conflict.Confidence);
     public string Summary => Conflict.Summary;
     public string Rationale => Conflict.Rationale;
     public string Recommendation => Conflict.Recommendation;
-    public string AccentHex => DisplayLabels.ConflictAccent(Conflict.Kind);
-    public bool IsRegistrationRace => Conflict.Kind == ConflictKind.GlobalHotkeyCompetition;
-    public bool IsPotential => Conflict.Kind == ConflictKind.PotentialConflict;
+    public string AccentHex => DisplayLabels.ConflictAccent(Conflict.Classification);
+    public bool CountsAsConflict => Conflict.CountsAsConflict;
+    public bool IsRegistrationRace => Conflict.IsConfirmedRegistrationRace;
+    public bool IsPotential => Conflict.Classification == ConflictClassification.PotentialConflict;
+    public bool IsNormalDuplicate => Conflict.Classification == ConflictClassification.NormalDuplicate;
+    public bool IsUnknown => Conflict.Classification == ConflictClassification.Unknown;
     public IReadOnlyList<ParticipantRowViewModel> Participants { get; }
-    public string ParticipantCountText => $"{Participants.Count} 个应用";
+    public string ApplicationCountText => $"{Participants.Select(participant => participant.ApplicationName).Distinct().Count()} 个应用";
+    public string ParticipantCountText => Participants.Count == 1
+        ? $"{ApplicationCountText} · 1 个功能"
+        : $"{ApplicationCountText} · {Participants.Count} 个功能";
 
     public override string ToString() => $"{GestureText}，{KindLabel}，{Summary}";
 }

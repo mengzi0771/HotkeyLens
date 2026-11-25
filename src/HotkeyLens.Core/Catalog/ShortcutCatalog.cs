@@ -64,6 +64,9 @@ public sealed record CatalogApplicationDefinition
     public IReadOnlyList<string> ProcessNames { get; init; } = Array.Empty<string>();
     public required string SourceName { get; init; }
     public required string SourceReference { get; init; }
+    public IReadOnlyList<string> Platforms { get; init; } = Array.Empty<string>();
+    public string AppliesTo { get; init; } = string.Empty;
+    public string LastReviewed { get; init; } = string.Empty;
     public string SettingsHint { get; init; } = string.Empty;
     public IReadOnlyList<CatalogShortcutDefinition> Shortcuts { get; init; } = Array.Empty<CatalogShortcutDefinition>();
 }

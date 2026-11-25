@@ -4,9 +4,9 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-HotkeyLens is an on-demand Windows desktop tool for discovering installed applications, reading accessible shortcut configurations, recording where every binding came from, and distinguishing proven global-hotkey competition, duplicate bindings, and potential conflicts.
+HotkeyLens is an on-demand Windows desktop tool for discovering installed applications, reading accessible shortcut configurations, recording where every binding came from, and classifying findings as no conflict, normal duplicate, potential conflict, confirmed conflict, or unknown.
 
-It does not run in the background, does not continuously monitor the keyboard, and does not fabricate scan results. All scan data stays on your machine.
+It does not run in the background, does not continuously monitor the keyboard, and does not fabricate scan results. Scan data stays on your machine; the only optional network request is the update check described below.
 
 ![HotkeyLens dashboard in the light theme](docs/screenshots/dashboard-light.png)
 
@@ -18,6 +18,7 @@ It does not run in the background, does not continuously monitor the keyboard, a
 - [How shortcuts are read](#how-shortcuts-are-read)
 - [Data model](#data-model)
 - [Conflict analysis](#conflict-analysis)
+- [Automatic updates](#automatic-updates)
 - [Interface](#interface)
 - [Architecture](#architecture)
 - [Build and run](#build-and-run)
@@ -71,8 +72,8 @@ Extract `HotkeyLens-Portable-win-x64.zip` to a folder you control and run `Hotke
 
 - Platform: Windows 10 / Windows 11 (x64)
 - Stack: C# / .NET 10 / WPF / Windows UI Automation
-- Current version: 1.0.0
-- Automated tests: 67 / 67 passing
+- Current version: 1.1.0
+- Automated tests: 98 / 98 passing
 - Status: builds, runs, and is packaged as a self-contained Windows x64 installation and portable build. Shortcut management is intentionally limited to safe, read-only navigation to an application's settings or configuration source; HotkeyLens does not rewrite third-party configurations.
 
 ## Core capabilities
@@ -104,7 +105,7 @@ The scan engine does not depend on any single application. Each source is an ind
 | Windows UI Automation | Accessible menu-item `AcceleratorKey` in open windows | Window | Runtime observation | Medium |
 | Built-in official catalog | Bundled summaries of official shortcut documentation | As documented | Official defaults | Medium |
 
-The built-in catalog currently covers VS Code, Windows Terminal, JetBrains IDEs, Notepad++ and Windows Shell. Every entry carries its official documentation URL. It represents documented defaults, not the user's current configuration.
+The built-in catalog currently covers Microsoft Word, Excel, PowerPoint, Google Chrome, Microsoft Edge, Adobe Photoshop, VS Code, Windows Terminal, JetBrains IDEs, Notepad++ and Windows Shell. Every entry carries its official documentation URL, the applicable product versions, the supported Windows versions, and the date the documentation was reviewed. It represents documented defaults, not the user's current configuration. Word, Excel, PowerPoint, Chrome, Edge and Photoshop are catalog-only: HotkeyLens does not parse their local user key assignments in this release.
 
 Adapters only read files or properties exposed by UI Automation. They do not launch scanned applications, expand menus, install keyboard hooks, or modify other applications' settings.
 
@@ -123,15 +124,17 @@ Filtering is performed in memory by `ShortcutQuery` against the current snapshot
 
 ### 4. Conflict analysis
 
-The same key combination does not automatically mean a conflict. HotkeyLens classifies findings by evidence:
+The same key combination does not automatically mean a conflict. HotkeyLens classifies every group of two or more entries by evidence, using gesture, scope, context, source and confidence:
 
-| Type | Condition | Meaning |
+| Classification | Condition | Meaning |
 |---|---|---|
-| Global hotkey competition | Two or more applications declare a binding as global, and each has `.lnk` registration evidence | Multiple programs may try to register the same global hotkey |
-| Potential conflict | At least one binding is global or has unknown scope | Interference is possible in some situations, but evidence is insufficient |
-| Duplicate binding | Every participating binding is local to its own window or application | The applications can normally use the key independently |
+| Confirmed conflict | Two or more `.lnk` entries declare the same key as a global hotkey, or one application has two different actions with the same key in an overlapping context and reliable local evidence | The same effective scope can genuinely compete for the key |
+| Potential conflict | A global or unknown-scope entry overlaps a local entry, or context/evidence is incomplete | Interference is possible, but the evidence is not sufficient to prove it |
+| Normal duplicate | All participants are ordinary in-application bindings in different applications | Word, Excel and Chrome can all use Ctrl+S independently; this is not counted as a conflict |
+| Unknown | Scope or context cannot be established | The tool records the finding without claiming a conflict |
+| No conflict | Entries do not share an effective scope or context | Excluded from conflict totals |
 
-Unknown scope lowers the conclusion; it is never presented as confirmed. Each result shows the participating applications, actions, scopes, rationale, confidence, and recommended handling.
+`Normal duplicate` and `no conflict` are never added to the conflict count. The Conflicts page shows the classification, participants, actions, scope, source, context, rationale and confidence for every finding.
 
 ## How shortcuts are read
 
@@ -170,19 +173,36 @@ A chord such as `Ctrl+K Ctrl+S` is stored as a full `KeySequence` while the firs
 
 ## Conflict analysis
 
-The analyzer only compares the same gesture across different applications. Multiple bindings inside one application are not treated as conflicting. Disabled entries and multi-stroke sequences are excluded. For each application, the entry with the strongest evidence is selected before scope and source determine the result type.
+The analyzer groups every enabled, single-stroke entry by canonical gesture. Within one application it looks for different actions that share the same gesture in overlapping contexts; two different actions in mutually exclusive contexts are not reported. Across applications it treats ordinary window/application bindings as normal duplicates, raises a potential conflict only when a global or unknown scope is involved, and requires at least two global registration evidences before calling it confirmed. Disabled entries and multi-stroke sequences are excluded.
 
-Results are evidence-based inferences, not registry facts. The UI explains the reasoning and never claims that a hotkey has definitively been "stolen".
+Windows has no public API that enumerates every global hotkey registered by other processes. A `.lnk` hotkey field is evidence that a shortcut asks Windows to register a hotkey; it is not proof that another process registered the same combination at runtime. Results are evidence-based inferences, not registry facts. The UI explains the reasoning and never claims that a hotkey has definitively been "stolen".
+
+## Automatic updates
+
+HotkeyLens checks the official repository for a newer stable release at most once every 24 hours, starting when the app opens. The check is a normal HTTPS request to the GitHub Releases API and stops when the app closes; there is no updater service, tray process, or startup task.
+
+- The default update source is `https://github.com/mengzi0771/HotkeyLens/releases`.
+- Draft and pre-release entries are ignored. Versions are compared numerically as Semantic Versioning, not as strings.
+- A manual **Check for updates** button in Settings works even when automatic checks are off.
+- When a newer release is found, the update window shows the current version, latest version, publication date, release notes, and the options **Update now**, **Remind me later**, and **Skip this version**.
+- Skipping stores the exact version. The skip can be cleared from Settings.
+- Network failures, GitHub rate limits, and malformed API responses are reported without blocking normal use.
+
+Downloads are restricted to HTTPS assets under `github.com/mengzi0771/HotkeyLens/releases/download/`. Before running anything, HotkeyLens reads `SHA256SUMS.txt` from the same release, downloads the package to a temporary file, and verifies its SHA256. A mismatch deletes the temporary file and refuses to run it. This checks integrity, not publisher identity; the binaries remain unsigned.
+
+The installed build downloads `HotkeyLens-Setup.exe` and starts the normal Inno Setup wizard after the user confirms. The portable build downloads `HotkeyLens-Portable-win-x64.zip`, opens its download folder, and explains how to close the app and replace the extracted files. HotkeyLens never silently installs an update and never overwrites the running portable executable.
+
+Update preferences (`AutoCheckUpdates`, `LastUpdateCheckUtc`, `SkippedVersion`) are stored in `preferences.json` with the other settings.
 
 ## Interface
 
 Five pages share one view model and scan snapshot:
 
-- **Dashboard:** applications, shortcuts, duplicate groups, potential conflicts, global competition, last scan time, and coverage.
+- **Dashboard:** applications, shortcuts, normal duplicates, potential conflicts, confirmed conflicts, last scan time, and coverage.
 - **Shortcuts:** search, filters, sorting, grouping, list, and a detail panel.
 - **Applications:** categories, icons, versions, scan state, paths, and settings locations.
-- **Conflicts:** evidence and recommendations grouped by type, severity, and confidence.
-- **Settings:** light/dark/system theme, scan-source toggles, timeout and window limits, data management, and about.
+- **Conflicts:** five classifications, evidence, participants, context, rationale, and recommendations.
+- **Settings:** light/dark/system theme, scan-source toggles, timeout and window limits, update preferences, manual update check, data management, and about.
 
 Themes are provided by shared resource dictionaries. Changing a theme applies immediately across the whole window and is saved automatically; no restart is required. The light theme uses a white sidebar, a light-gray workspace, and white cards. The dark theme uses neutral charcoal panels, dark-gray cards, and a single blue accent.
 
@@ -204,7 +224,8 @@ HotkeyLens.Core
                   |
                   +-- Adapters (7 source types)
                   +-- Models / Catalog
-                  +-- Persistence (JSON)
+                  +-- Updates (GitHub Releases, SHA256 verification)
+                  +-- Persistence (JSON with .bak recovery)
 ```
 
 - **Core** owns models, application discovery, scan orchestration, source adapters, conflict analysis, querying, and persistence.
@@ -242,7 +263,7 @@ It requires the .NET 10 Desktop Runtime on the target machine. This is not the b
 ### Build release packages
 
 ```powershell
-.\packaging\build-release.ps1 -Version 1.0.0
+.\packaging\build-release.ps1 -Version 1.1.0
 ```
 
 The script publishes a self-contained `win-x64` build, creates the portable ZIP, compiles the Inno Setup installer, and writes `SHA256SUMS.txt` under `artifacts\dist`. If Inno Setup is installed in a non-standard location, pass `-InnoCompiler <path-to-ISCC.exe>`.
@@ -256,8 +277,12 @@ Default data directory:
 ```
 %LOCALAPPDATA%\HotkeyLens
 ├── scan-snapshot.json
-└── preferences.json
+├── scan-snapshot.json.bak
+├── preferences.json
+└── preferences.json.bak
 ```
+
+Saves write a temporary file, flush it to disk, then replace the previous file while keeping one `.bak` copy. If the primary file is missing or invalid, HotkeyLens tries the backup before reporting an error, so a failed save cannot silently destroy the last good snapshot. A version-1 snapshot from HotkeyLens 1.0.0 is migrated to the five-class schema when read.
 
 For testing or diagnostics, override it with:
 
@@ -270,7 +295,8 @@ HotkeyLens never writes data into its installation directory or the registry. If
 ## Data and privacy
 
 - Scanning only happens after the user clicks Scan.
-- No telemetry, no data upload, and no background network access.
+- No telemetry and no upload of scan results, shortcuts, or application names.
+- The only network request is the optional update check: one HTTPS request to the GitHub Releases API at most every 24 hours while the app is open. It sends no machine identifiers, scan data, or settings. Disable it in Settings without affecting local features.
 - No reading of other process memory, no modification of other applications' settings, and no writes to the system registry.
 - "Open source" and "Open settings location" use the system default handler only when the user clicks them.
 - Closing the main window exits the application. There is no tray icon, startup task, or resident service.

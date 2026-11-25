@@ -2,15 +2,66 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using HotkeyLens.App.ViewModels;
+using HotkeyLens.App.Views;
 
 namespace HotkeyLens.App;
 
 public partial class MainWindow : Window
 {
+    private bool _updateCheckStarted;
+    private UpdateWindow? _updateWindow;
+
     public MainWindow()
     {
         InitializeComponent();
         StateChanged += (_, _) => UpdateMaximizeButton();
+        Loaded += MainWindow_Loaded;
+    }
+
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (_updateCheckStarted || DataContext is not MainViewModel viewModel)
+        {
+            return;
+        }
+
+        _updateCheckStarted = true;
+        viewModel.Update.UpdateAvailable += OnUpdateAvailable;
+        await viewModel.Update.CheckOnStartupAsync();
+    }
+
+    private void OnUpdateAvailable()
+        => Dispatcher.BeginInvoke(new Action(ShowUpdateDialog));
+
+    private void ShowUpdateDialog()
+    {
+        if (DataContext is not MainViewModel viewModel)
+        {
+            return;
+        }
+
+        if (_updateWindow is { IsLoaded: true })
+        {
+            _updateWindow.Activate();
+            return;
+        }
+
+        var window = new UpdateWindow
+        {
+            DataContext = viewModel.Update,
+            Owner = this
+        };
+        _updateWindow = window;
+
+        void CloseRequested() => window.Close();
+        viewModel.Update.CloseRequested += CloseRequested;
+        window.Closed += (_, _) =>
+        {
+            viewModel.Update.CloseRequested -= CloseRequested;
+            _updateWindow = null;
+        };
+        window.ShowDialog();
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

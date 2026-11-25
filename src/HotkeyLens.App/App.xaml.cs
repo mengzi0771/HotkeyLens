@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
+using HotkeyLens.App.Services;
 using HotkeyLens.App.ViewModels;
 using HotkeyLens.Core.Abstractions;
 using HotkeyLens.Core.Adapters;
@@ -8,6 +9,7 @@ using HotkeyLens.Core.Catalog;
 using HotkeyLens.Core.Discovery;
 using HotkeyLens.Core.Persistence;
 using HotkeyLens.Core.Scanning;
+using HotkeyLens.Core.Updates;
 
 namespace HotkeyLens.App;
 
@@ -60,8 +62,18 @@ public partial class App : Application
             var engine = new ScanEngine(new ApplicationDiscoveryService(), adapters);
             var snapshotStore = new JsonScanSnapshotStore(dataDirectory);
             var preferencesStore = new JsonUserPreferencesStore(dataDirectory);
+            var updateService = new UpdateService(
+                new GitHubReleaseClient(),
+                preferencesStore,
+                AppVersion.Current);
 
-            _mainViewModel = new MainViewModel(engine, snapshotStore, preferencesStore, dataDirectory);
+            _mainViewModel = new MainViewModel(
+                engine,
+                snapshotStore,
+                preferencesStore,
+                dataDirectory,
+                updateService,
+                new UpdateDownloadService());
             await _mainViewModel.InitializeAsync();
 
             var window = new MainWindow { DataContext = _mainViewModel };

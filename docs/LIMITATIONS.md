@@ -58,7 +58,10 @@ UI Automation 只暴露应用主动提供的可访问性信息。它看不到不
 冲突分析是基于当前快照的静态证据推断，不是操作系统级别的注册验证。
 
 - 两个应用使用相同按键，不一定发生冲突；
-- 作用范围、上下文、注册证据缺失时只能归类为潜在冲突；
+- 普通应用级绑定归为“正常重复”，不计入冲突；
+- 同一应用只有在上下文可能重叠时才检查同键不同功能；
+- 至少两个 `.lnk` 全局注册证据，才把跨应用结果标为“确认冲突”；
+- 作用范围、上下文、注册证据缺失时归类为潜在冲突或未知；
 - 无法知道应用是否在实际运行、前台/后台状态或是否临时抢占；
 - 多段按键序列不参与冲突分析；
 - 已知的全局注册结果可能因启动顺序、权限和系统策略而变化；
@@ -84,7 +87,7 @@ UI Automation 只暴露应用主动提供的可访问性信息。它看不到不
 ## 9. 保存与运行环境
 
 - 默认数据目录是 `%LOCALAPPDATA%\HotkeyLens`；
-- 保存使用唯一临时文件、`FileShare.None`、Flush 和原子替换，失败时保留旧快照；
+- 保存使用唯一临时文件、`FileShare.None`、Flush、优先 `File.Replace` 并保留 `.bak`；失败时保留旧快照，主文件损坏时回退备份；
 - 当前开发机器上，火绒的主机防御对新建、未签名的 .NET 进程访问用户目录返回 `ACCESS_DENIED`；PowerShell 等受信任进程访问同一路径正常。这不是文件 ACL 或程序并发问题；
 - 在此类安全软件环境下，需要由用户将 HotkeyLens 加入信任/应用放行列表，或使用受控的 `HOTKEYLENS_DATA_DIR` 测试目录；
 - HotkeyLens 不会尝试绕过安全软件，也不会用改名、关闭保存或伪造成功来规避问题。
@@ -107,12 +110,18 @@ UI Automation 只暴露应用主动提供的可访问性信息。它看不到不
 
 ## 12. 当前内置目录的覆盖范围
 
-内置官方目录覆盖：
+内置官方目录覆盖 11 个应用：
 
+- Microsoft Word
+- Microsoft Excel
+- Microsoft PowerPoint
+- Google Chrome
+- Microsoft Edge
+- Adobe Photoshop
 - Visual Studio Code / Insiders
 - Windows Terminal
 - JetBrains IDEs（IDEA、PyCharm、WebStorm、CLion、GoLand、Rider、PhpStorm、RubyMine、DataGrip、Android Studio 等进程）
 - Notepad++
 - Windows Shell（explorer.exe）
 
-其他软件仍可通过快捷方式热键和当前窗口 UI Automation 被识别；若都没有证据，会如实显示为无法自动读取。
+Word、Excel、PowerPoint、Chrome、Edge 和 Photoshop 在本版本只提供官方默认值，不读取其本地用户按键配置。其他软件仍可通过快捷方式热键和当前窗口 UI Automation 被识别；若都没有证据，会如实显示为无法自动读取。

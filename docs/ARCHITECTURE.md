@@ -160,18 +160,20 @@ public interface IShortcutSourceAdapter
 `ShortcutConflictAnalyzer` 的输入是完整快捷键集合：
 
 1. 排除禁用条目和多段序列；
-2. 按 `Gesture.Canonical` 分组；
-3. 只保留涉及至少两个不同应用的分组；
-4. 每个应用选取最有证据的代表条目；
-5. 根据每个应用的作用范围与来源类型判定类别。
+2. 按 `Gesture.Canonical` 分组，保留所有至少两条目的分组；
+3. 在每个应用内部检查同一按键是否绑定不同功能，仅当上下文为空或相等时才视为可能重叠；
+4. 跨应用检查作用范围与注册证据；
+5. 输出五类结果之一，并记录分类依据、参与者和置信度。
 
 判定逻辑：
 
-- 两个及以上应用都同时满足 `Global` + `ShortcutFile` → `GlobalHotkeyCompetition`；
-- 否则存在 `Global` 或 `Unknown` → `PotentialConflict`；
-- 否则 → `DuplicateBinding`。
+- 同应用、不同功能、上下文可能重叠：涉及 `Unknown` → `Unknown`；有可靠本地证据 → `ConfirmedConflict`；否则 → `PotentialConflict`；
+- 跨应用至少两个 `Global` + `ShortcutFile` → `ConfirmedConflict` / `GlobalHotkeyCompetition`；
+- 否则存在 `Global` → `PotentialConflict`；
+- 全部 `Unknown` → `Unknown`；
+- 其余 → `NormalDuplicate` / `DuplicateBinding`。
 
-相同按键本身永远不直接构成冲突。分析结果包含参与应用、按键、功能、范围、依据、可信度和处理建议。冲突 ID 由类别、规范按键和排序后的应用 ID 生成，保证稳定。
+`NormalDuplicate` 与 `NoConflict` 不计入冲突统计。相同按键本身永远不直接构成冲突。分析结果包含参与应用、按键、功能、范围、上下文、依据、可信度和处理建议。冲突 ID 由类别、分类、规范按键和排序后的参与者 ID 生成，保证稳定。
 
 ## 8. 查询
 
@@ -196,11 +198,14 @@ public interface IShortcutSourceAdapter
 1. 在目标目录创建唯一临时文件；
 2. `FileMode.CreateNew`、`FileShare.None`、`WriteThrough`；
 3. 序列化后 Flush，确保数据落盘；
-4. 以可重试的 `File.Move(..., overwrite: true)` 原子替换目标；
-5. 失败时删除本次临时文件，旧快照保持完整；
-6. IO/权限异常包装为带路径、权限、安全软件提示的可操作错误。
+4. 优先 `File.Replace(..., backupPath)`，保留一份 `.bak`；
+5. 不支持或重试耗尽时，把旧文件移到 `.bak`，再移入新文件；失败则尝试还原备份；
+6. 失败时删除本次临时文件，旧快照保持完整；
+7. IO/权限异常包装为带路径、权限、安全软件提示的可操作错误。
 
-`preferences.json` 保存主题、扫描开关、超时和窗口上限，使用同样的临时文件与原子替换机制。
+读取时先解主文件，主文件缺失或损坏再解 `.bak`。读取 1.0.0 的 schemaVersion 1 快照会迁移分类与统计。`preferences.json` 保存主题、扫描开关、超时、窗口上限、自动检查更新、上次检查时间和跳过版本，使用同样的临时文件、备份与替换机制。
+
+更新相关实现位于 `Core/Updates`：`SemanticVersion` 负责数值比较，`GitHubReleaseClient` 只读取稳定 Release 并校验官方资产 URL，`UpdateService` 负责 24 小时节流/跳过版本/状态，`UpdateDownloadService` 负责 HTTPS 下载、SHA256SUMS 校验与临时文件清理。App 层通过 `InstallationModeDetector` 区分安装版与便携版，并由 `UpdateViewModel` 驱动更新窗口。
 
 App 使用 `Local\HotkeyLens.SingleInstance` 互斥量避免两个实例同时扫描和保存。`HOTKEYLENS_DATA_DIR` 可在测试或便携场景覆盖数据目录。
 

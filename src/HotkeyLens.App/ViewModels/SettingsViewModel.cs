@@ -17,6 +17,8 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly Action _onDataCleared;
     private readonly Action<string> _onThemePreview;
     private readonly bool _showWelcomeOnStartup;
+    private readonly DateTimeOffset? _lastUpdateCheckUtc;
+    private readonly string? _skippedVersion;
 
     private OptionItem _selectedTheme;
     private bool _scanShortcutFiles;
@@ -25,6 +27,7 @@ public sealed class SettingsViewModel : ObservableObject
     private bool _includeDocumentedCatalog;
     private bool _includeRegistryOnlyApplications;
     private bool _includeSystemApplications;
+    private bool _autoCheckUpdates;
     private OptionItem _selectedUiTimeout;
     private OptionItem _selectedMaxWindows;
     private bool _isDirty;
@@ -46,6 +49,9 @@ public sealed class SettingsViewModel : ObservableObject
         _onDataCleared = onDataCleared;
         _onThemePreview = onThemePreview;
         _showWelcomeOnStartup = preferences.ShowWelcomeOnStartup;
+        _autoCheckUpdates = preferences.AutoCheckUpdates;
+        _lastUpdateCheckUtc = preferences.LastUpdateCheckUtc;
+        _skippedVersion = preferences.SkippedVersion;
 
         ThemeOptions =
         [
@@ -150,6 +156,19 @@ public sealed class SettingsViewModel : ObservableObject
         set => SetOption(ref _includeSystemApplications, value);
     }
 
+    public bool AutoCheckUpdates
+    {
+        get => _autoCheckUpdates;
+        set
+        {
+            if (SetProperty(ref _autoCheckUpdates, value))
+            {
+                IsDirty = true;
+                StatusMessage = string.Empty;
+            }
+        }
+    }
+
     public OptionItem SelectedUiTimeout
     {
         get => _selectedUiTimeout;
@@ -229,11 +248,28 @@ public sealed class SettingsViewModel : ObservableObject
         {
             ErrorMessage = string.Empty;
             StatusMessage = string.Empty;
+            var lastChecked = _lastUpdateCheckUtc;
+            var skippedVersion = _skippedVersion;
+            try
+            {
+                // The update service may have refreshed these fields since this page loaded.
+                var stored = await _preferencesStore.LoadAsync();
+                lastChecked = stored.LastUpdateCheckUtc;
+                skippedVersion = stored.SkippedVersion;
+            }
+            catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+            {
+                // Keep the values loaded at startup and continue saving the user's edits.
+            }
+
             var preferences = new UserPreferences
             {
                 Theme = SelectedTheme.Value,
                 ScanOptions = BuildOptions(),
-                ShowWelcomeOnStartup = _showWelcomeOnStartup
+                ShowWelcomeOnStartup = _showWelcomeOnStartup,
+                AutoCheckUpdates = AutoCheckUpdates,
+                LastUpdateCheckUtc = lastChecked,
+                SkippedVersion = skippedVersion
             };
             await _preferencesStore.SaveAsync(preferences);
             _onSaved(preferences);

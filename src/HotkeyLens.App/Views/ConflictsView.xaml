@@ -14,31 +14,23 @@
         </Grid.RowDefinitions>
 
         <Border Grid.Row="0" Style="{StaticResource CardBorder}" Padding="16,14">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-
-                <Border Grid.Column="0" Background="{DynamicResource DangerSoftBrush}" CornerRadius="9" Padding="13,10">
+            <UniformGrid Columns="4">
+                <Border Background="{DynamicResource DangerSoftBrush}" CornerRadius="9" Padding="13,10" Margin="0,0,8,0">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE7BA;" FontFamily="{StaticResource IconFontFamily}" FontSize="14"
                                        Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" />
-                            <TextBlock Text="全局注册竞争" FontSize="11.5" FontWeight="SemiBold" Margin="7,0,0,0"
+                            <TextBlock Text="确认冲突" FontSize="11.5" FontWeight="SemiBold" Margin="7,0,0,0"
                                        Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" />
                         </StackPanel>
-                        <TextBlock Text="{Binding GlobalCompetitions}" FontFamily="{StaticResource MonoFontFamily}" FontSize="24"
+                        <TextBlock Text="{Binding ConfirmedConflicts}" FontFamily="{StaticResource MonoFontFamily}" FontSize="24"
                                    FontWeight="SemiBold" Margin="0,5,0,0" />
-                        <TextBlock Text="有明确注册证据、运行时可能争抢同一组合" Style="{StaticResource CaptionText}"
+                        <TextBlock Text="有可靠证据的全局注册竞争或同应用重叠" Style="{StaticResource CaptionText}"
                                    TextWrapping="Wrap" Margin="0,2,0,0" />
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Column="2" Background="{DynamicResource WarningSoftBrush}" CornerRadius="9" Padding="13,10">
+                <Border Background="{DynamicResource WarningSoftBrush}" CornerRadius="9" Padding="13,10" Margin="0,0,8,0">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE7BA;" FontFamily="{StaticResource IconFontFamily}" FontSize="14"
@@ -48,26 +40,41 @@
                         </StackPanel>
                         <TextBlock Text="{Binding PotentialConflicts}" FontFamily="{StaticResource MonoFontFamily}" FontSize="24"
                                    FontWeight="SemiBold" Margin="0,5,0,0" />
-                        <TextBlock Text="作用范围交叠，但缺少足以确认冲突的证据" Style="{StaticResource CaptionText}"
+                        <TextBlock Text="作用范围可能交叠，但缺少足以确认的证据" Style="{StaticResource CaptionText}"
                                    TextWrapping="Wrap" Margin="0,2,0,0" />
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Column="4" Background="{DynamicResource AccentSoftBrush}" CornerRadius="9" Padding="13,10">
+                <Border Background="{DynamicResource AccentSoftBrush}" CornerRadius="9" Padding="13,10" Margin="0,0,8,0">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE8C9;" FontFamily="{StaticResource IconFontFamily}" FontSize="14"
                                        Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
-                            <TextBlock Text="重复快捷键" FontSize="11.5" FontWeight="SemiBold" Margin="7,0,0,0"
+                            <TextBlock Text="正常重复" FontSize="11.5" FontWeight="SemiBold" Margin="7,0,0,0"
                                        Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                         </StackPanel>
-                        <TextBlock Text="{Binding DuplicateGroups}" FontFamily="{StaticResource MonoFontFamily}" FontSize="24"
+                        <TextBlock Text="{Binding NormalDuplicates}" FontFamily="{StaticResource MonoFontFamily}" FontSize="24"
                                    FontWeight="SemiBold" Margin="0,5,0,0" />
-                        <TextBlock Text="不同应用在各自窗口内使用相同组合，通常不冲突" Style="{StaticResource CaptionText}"
+                        <TextBlock Text="不同应用的普通应用级同键，不计入冲突总数" Style="{StaticResource CaptionText}"
                                    TextWrapping="Wrap" Margin="0,2,0,0" />
                     </StackPanel>
                 </Border>
-            </Grid>
+
+                <Border Background="{DynamicResource SurfaceStrongBrush}" CornerRadius="9" Padding="13,10">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE9D9;" FontFamily="{StaticResource IconFontFamily}" FontSize="14"
+                                       Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="未知" FontSize="11.5" FontWeight="SemiBold" Margin="7,0,0,0"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding UnknownFindings}" FontFamily="{StaticResource MonoFontFamily}" FontSize="24"
+                                   FontWeight="SemiBold" Margin="0,5,0,0" />
+                        <TextBlock Text="数据不足，当前无法可靠判断" Style="{StaticResource CaptionText}"
+                                   TextWrapping="Wrap" Margin="0,2,0,0" />
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
         </Border>
 
         <Border Grid.Row="2" Style="{StaticResource CardBorder}" Padding="16,10">
@@ -75,7 +82,7 @@
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="&#xE946;" FontFamily="{StaticResource IconFontFamily}" FontSize="13"
                                Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
-                    <TextBlock Text="相同按键组合只有在作用范围与注册证据支持时才归类为冲突。" Style="{StaticResource MutedText}"
+                    <TextBlock Text="相同按键组合只有在作用范围、上下文和注册证据支持时才归类为冲突；正常重复不计入冲突总数。" Style="{StaticResource MutedText}"
                                VerticalAlignment="Center" Margin="7,0,0,0" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
@@ -83,6 +90,8 @@
                               ItemsSource="{Binding ConflictFilterOptions}" SelectedItem="{Binding SelectedConflictFilter}"
                               ToolTip="按冲突类型筛选" />
                     <TextBlock Text="{Binding ConflictFilterSummary}" Style="{StaticResource MutedText}"
+                               VerticalAlignment="Center" Margin="10,0,0,0" />
+                    <TextBlock Text="{Binding NoConflictGroups, StringFormat=另有 {0} 组未发现冲突}" Style="{StaticResource CaptionText}"
                                VerticalAlignment="Center" Margin="10,0,0,0" />
                 </StackPanel>
             </Grid>
@@ -124,7 +133,7 @@
                                                                    FontSize="12.5" FontWeight="SemiBold" />
                                                     </Border>
                                                     <Border Style="{StaticResource BadgeBorder}" Margin="9,0,0,0" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding KindLabel}" FontSize="10" FontWeight="SemiBold"
+                                                        <TextBlock Text="{Binding TypeLabel}" FontSize="10" FontWeight="SemiBold"
                                                                    Foreground="{Binding AccentHex}" />
                                                     </Border>
                                                     <Border Style="{StaticResource BadgeBorder}" Margin="6,0,0,0" VerticalAlignment="Center">
@@ -147,9 +156,10 @@
                                                             <DataTemplate>
                                                                 <Grid Margin="0,2">
                                                                     <Grid.ColumnDefinitions>
-                                                                        <ColumnDefinition Width="180" />
+                                                                        <ColumnDefinition Width="160" />
                                                                         <ColumnDefinition Width="*" />
-                                                                        <ColumnDefinition Width="92" />
+                                                                        <ColumnDefinition Width="86" />
+                                                                        <ColumnDefinition Width="130" />
                                                                         <ColumnDefinition Width="110" />
                                                                     </Grid.ColumnDefinitions>
                                                                     <TextBlock Text="{Binding ApplicationName}" FontSize="11" FontWeight="SemiBold"
@@ -159,7 +169,10 @@
                                                                                TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,8,0" />
                                                                     <TextBlock Grid.Column="2" Text="{Binding ScopeLabel}" FontSize="10"
                                                                                Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
-                                                                    <TextBlock Grid.Column="3" Text="{Binding SourceLabel}" FontSize="10"
+                                                                    <TextBlock Grid.Column="3" Text="{Binding ContextText}" FontSize="10"
+                                                                               Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"
+                                                                               TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
+                                                                    <TextBlock Grid.Column="4" Text="{Binding SourceLabel}" FontSize="10"
                                                                                Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"
                                                                                TextTrimming="CharacterEllipsis" />
                                                                 </Grid>
@@ -204,13 +217,13 @@
                                     <MultiDataTrigger>
                                         <MultiDataTrigger.Conditions>
                                             <Condition Binding="{Binding HasSnapshot}" Value="True" />
-                                            <Condition Binding="{Binding HasConflicts}" Value="False" />
+                                            <Condition Binding="{Binding HasNoConflicts}" Value="True" />
                                         </MultiDataTrigger.Conditions>
                                         <Setter Property="Visibility" Value="Visible" />
                                     </MultiDataTrigger>
                                     <MultiDataTrigger>
                                         <MultiDataTrigger.Conditions>
-                                            <Condition Binding="{Binding HasConflicts}" Value="True" />
+                                            <Condition Binding="{Binding HasAnalysisResults}" Value="True" />
                                             <Condition Binding="{Binding FilteredConflicts.Count}" Value="0" />
                                         </MultiDataTrigger.Conditions>
                                         <Setter Property="Visibility" Value="Visible" />
@@ -238,13 +251,13 @@
                                     </Style.Triggers>
                                 </Style>
                             </StackPanel.Style>
-                            <TextBlock Text="本次扫描没有发现需要提示的重复或冲突。" FontSize="12.5" FontWeight="SemiBold"
+                            <TextBlock Text="本次扫描没有发现可归类的重复按键组合。" FontSize="12.5" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
                             <TextBlock Text="没有结果不等于系统中不存在快捷键，只表示已读取的来源里没有可归类的重复证据。"
                                        Style="{StaticResource CaptionText}" TextWrapping="Wrap" MaxWidth="440"
                                        TextAlignment="Center" Margin="0,6,0,0" />
                         </StackPanel>
-                        <TextBlock Text="当前筛选条件下没有冲突记录。"
+                        <TextBlock Text="当前筛选条件下没有分析记录。"
                                    Margin="0,8,0,0" HorizontalAlignment="Center">
                             <TextBlock.Style>
                                 <Style TargetType="{x:Type TextBlock}">

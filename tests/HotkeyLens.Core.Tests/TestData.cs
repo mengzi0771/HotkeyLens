@@ -28,12 +28,13 @@ internal static class TestData
         ConfidenceLevel confidence = ConfidenceLevel.High,
         string? action = null,
         string? sequence = null,
-        bool isEnabled = true)
+        bool isEnabled = true,
+        string? context = null)
     {
         var gesture = ShortcutGesture.Parse(gestureText);
         var resolvedAction = action ?? $"动作 {gesture.Canonical}";
         var display = sequence ?? gesture.Canonical;
-        var context = scope == ShortcutScope.Contextual ? "editorTextFocus" : null;
+        var resolvedContext = context ?? (scope == ShortcutScope.Contextual ? "editorTextFocus" : null);
         return new ShortcutEntry
         {
             Id = ShortcutEntry.BuildId(
@@ -42,7 +43,7 @@ internal static class TestData
                 resolvedAction,
                 sourceKind,
                 "test-source",
-                context),
+                resolvedContext),
             ApplicationId = application.Id,
             ApplicationName = application.Name,
             Gesture = gesture,
@@ -56,7 +57,7 @@ internal static class TestData
             Confidence = confidence,
             ConfidenceRationale = "自动化测试构造的数据。",
             Origin = origin,
-            Context = context,
+            Context = resolvedContext,
             IsEnabled = isEnabled,
             CapturedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)
         };

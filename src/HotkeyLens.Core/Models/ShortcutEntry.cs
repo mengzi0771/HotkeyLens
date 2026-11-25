@@ -13,6 +13,9 @@ public sealed record ShortcutEntry
     public ShortcutSourceKind SourceKind { get; init; } = ShortcutSourceKind.Observed;
     public string SourceName { get; init; } = string.Empty;
     public string? SourceReference { get; init; }
+
+    /// <summary>Human-readable version, platform and review date for the source.</summary>
+    public string Applicability { get; init; } = string.Empty;
     public ConfidenceLevel Confidence { get; init; } = ConfidenceLevel.Unknown;
     public string ConfidenceRationale { get; init; } = string.Empty;
     public ShortcutOrigin Origin { get; init; } = ShortcutOrigin.Unknown;

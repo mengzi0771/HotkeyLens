@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidatePattern('^\d+\.\d+\.\d+$')]
-    [string]$Version = '1.0.0',
+    [string]$Version = '1.1.0',
     [string]$Runtime = 'win-x64',
     [string]$InnoCompiler
 )
@@ -79,6 +79,8 @@ Invoke-Checked 'dotnet publish' {
 # The portable package is the same published payload plus a short usage note.
 Copy-Item -Path (Join-Path $publishDir '*') -Destination $portableDir -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'README-PORTABLE.txt') -Destination $portableDir -Force
+# The marker is what InstallationModeDetector uses to distinguish a portable copy.
+Set-Content -LiteralPath (Join-Path $portableDir 'portable.marker') -Value 'HotkeyLens portable build' -Encoding utf8NoBOM
 Compress-Archive -Path (Join-Path $portableDir '*') -DestinationPath $portableZip -CompressionLevel Optimal -Force
 
 Invoke-Checked 'Inno Setup compile' {

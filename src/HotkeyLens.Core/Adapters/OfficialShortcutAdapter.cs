@@ -60,6 +60,16 @@ public sealed class OfficialShortcutAdapter : IShortcutSourceAdapter
 
                 var displayGesture = sequence ?? gesture!.Canonical;
                 var action = shortcut.Action;
+                var platforms = catalog.Platforms.Count > 0
+                    ? string.Join("、", catalog.Platforms)
+                    : "Windows 10、Windows 11";
+                var reviewed = string.IsNullOrWhiteSpace(catalog.LastReviewed)
+                    ? _catalog.CatalogUpdated
+                    : catalog.LastReviewed;
+                var appliesTo = string.IsNullOrWhiteSpace(catalog.AppliesTo)
+                    ? $"{application.Name} 的受支持桌面版本"
+                    : catalog.AppliesTo;
+                var applicability = $"{appliesTo}；{platforms}；文档核对 {reviewed}";
                 var entry = new ShortcutEntry
                 {
                     Id = ShortcutEntry.BuildId(
@@ -81,9 +91,11 @@ public sealed class OfficialShortcutAdapter : IShortcutSourceAdapter
                     SourceKind = ShortcutSourceKind.OfficialDocumentation,
                     SourceName = catalog.SourceName,
                     SourceReference = catalog.SourceReference,
+                    Applicability = applicability,
                     Confidence = ConfidenceLevel.Medium,
                     ConfidenceRationale =
-                        "来自厂商公开的默认键位文档；文档可能随版本变化，也不代表用户在当前安装中实际修改过的绑定。",
+                        $"来自厂商公开的默认键位文档；适用 {appliesTo}（{platforms}），文档核对日期 {reviewed}。" +
+                        "文档可能随版本变化，也不代表用户在当前安装中实际修改过的绑定。",
                     Origin = ShortcutOrigin.OfficialDefault,
                     Context = shortcut.Context,
                     RawValue = shortcut.Sequence ?? shortcut.Keys,

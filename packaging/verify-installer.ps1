@@ -5,6 +5,8 @@ param(
     [string]$PortableArchive,
     [string]$Checksums,
     [string]$WorkRoot,
+    [string]$ExpectedVersion = '1.1.0',
+    [string]$UpgradeExpectedVersion = '1.1.1',
     [switch]$AllowDefaultDataSentinel
 )
 
@@ -55,6 +57,9 @@ function Assert-Installed([string]$expectedVersion) {
     }
     if (-not (Test-Path -LiteralPath (Join-Path $installDir 'unins000.exe') -PathType Leaf)) {
         throw 'Uninstaller is missing after installation.'
+    }
+    if (Test-Path -LiteralPath (Join-Path $installDir 'portable.marker')) {
+        throw 'Installed copy incorrectly contains portable.marker.'
     }
     if (-not (Test-Path -LiteralPath $desktopShortcut -PathType Leaf)) {
         throw "Desktop shortcut was not created: $desktopShortcut"
@@ -190,9 +195,9 @@ try {
         $results['SetupSha256Verified'] = $true
     }
 
-    Install-Package $Setup '1.0.0' 'first'
+    Install-Package $Setup $ExpectedVersion 'first'
     if ($UpgradeSetup) {
-        Install-Package $UpgradeSetup '1.0.1' 'upgrade' -Upgrade
+        Install-Package $UpgradeSetup $UpgradeExpectedVersion 'upgrade' -Upgrade
         $results['UpgradePreservedData'] = $true
     }
 
@@ -218,6 +223,7 @@ try {
         $portableExe = Join-Path $portableDir 'HotkeyLens.exe'
         if (-not (Test-Path -LiteralPath $portableExe)) { throw 'Portable archive does not contain HotkeyLens.exe at its root.' }
         if (-not (Test-Path -LiteralPath (Join-Path $portableDir 'README-PORTABLE.txt'))) { throw 'Portable archive does not contain README-PORTABLE.txt.' }
+        if (-not (Test-Path -LiteralPath (Join-Path $portableDir 'portable.marker'))) { throw 'Portable archive does not contain portable.marker.' }
         Test-AppLaunch $portableExe $portableData 'portable'
         $results['PortableArchive'] = 'launched without an installed .NET runtime'
     }

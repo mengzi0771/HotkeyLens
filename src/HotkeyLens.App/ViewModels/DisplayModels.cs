@@ -98,10 +98,24 @@ public static class DisplayLabels
     public static string ConflictKindLabel(ConflictKind kind) => kind switch
     {
         ConflictKind.GlobalHotkeyCompetition => "全局注册竞争",
-        ConflictKind.PotentialConflict => "潜在冲突",
-        ConflictKind.DuplicateBinding => "重复绑定",
+        ConflictKind.SameApplicationOverlap => "同应用按键重叠",
+        ConflictKind.PotentialConflict => "潜在作用域重叠",
+        ConflictKind.DuplicateBinding => "跨应用正常重复",
+        ConflictKind.Unknown => "证据不足",
         _ => "未知"
     };
+
+    public static string ConflictClassificationLabel(ConflictClassification classification) => classification switch
+    {
+        ConflictClassification.NoConflict => "无冲突",
+        ConflictClassification.NormalDuplicate => "正常重复",
+        ConflictClassification.PotentialConflict => "潜在冲突",
+        ConflictClassification.ConfirmedConflict => "确认冲突",
+        _ => "未知"
+    };
+
+    public static string ConflictTypeLabel(ConflictClassification classification, ConflictKind kind)
+        => $"{ConflictClassificationLabel(classification)} · {ConflictKindLabel(kind)}";
 
     public static string Severity(ConflictSeverity severity) => severity switch
     {
@@ -121,7 +135,17 @@ public static class DisplayLabels
     public static string ConflictAccent(ConflictKind kind) => kind switch
     {
         ConflictKind.GlobalHotkeyCompetition => "#D1495B",
+        ConflictKind.SameApplicationOverlap => "#D1495B",
         ConflictKind.PotentialConflict => "#C47F17",
         _ => "#2F6FDB"
+    };
+
+    public static string ConflictAccent(ConflictClassification classification) => classification switch
+    {
+        ConflictClassification.ConfirmedConflict => "#D1495B",
+        ConflictClassification.PotentialConflict => "#C47F17",
+        ConflictClassification.NormalDuplicate => "#2F6FDB",
+        ConflictClassification.Unknown => "#8792A6",
+        _ => "#8792A6"
     };
 }

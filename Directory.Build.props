@@ -9,9 +9,9 @@
     <Description>Discover Every Shortcut. Windows shortcut discovery, provenance and conflict analysis.</Description>
     <Company>mengzi0771</Company>
     <Authors>mengzi0771</Authors>
-    <Version>1.0.0</Version>
-    <FileVersion>1.0.0.0</FileVersion>
-    <InformationalVersion>1.0.0</InformationalVersion>
+    <Version>1.1.0</Version>
+    <FileVersion>1.1.0.0</FileVersion>
+    <InformationalVersion>1.1.0</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Copyright>Copyright © 2026 mengzi0771</Copyright>
     <NeutralLanguage>zh-CN</NeutralLanguage>

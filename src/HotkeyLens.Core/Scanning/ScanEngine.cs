@@ -146,7 +146,7 @@ public sealed class ScanEngine : IScanEngine
         progress?.Report(new ScanProgress
         {
             Phase = "冲突分析",
-            Message = "正在比较不同应用之间的相同按键组合",
+            Message = "正在按应用、作用域、上下文和数据来源分析相同按键组合",
             Percent = 95
         });
 
@@ -197,7 +197,7 @@ public sealed class ScanEngine : IScanEngine
             ApplicationResults = applicationResults,
             Diagnostics = diagnostics,
             Statistics = statistics,
-            EngineVersion = "1.0"
+            EngineVersion = "1.1"
         };
     }
 
@@ -274,6 +274,15 @@ public sealed class ScanEngine : IScanEngine
             .ToDictionary(scope => scope, scope => shortcuts.Count(entry => entry.Scope == scope));
         var bySource = Enum.GetValues<ShortcutSourceKind>()
             .ToDictionary(kind => kind, kind => shortcuts.Count(entry => entry.SourceKind == kind));
+        var analyzedGroups = shortcuts
+            .Where(entry => entry.IsEnabled && !entry.IsSequence)
+            .Select(entry => entry.Gesture.Canonical)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
+        var findingGroups = conflicts
+            .Select(conflict => conflict.Gesture.Canonical)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
 
         return new ScanStatistics
         {
@@ -293,11 +302,19 @@ public sealed class ScanEngine : IScanEngine
             RuntimeObservedShortcuts = shortcuts.Count(entry =>
                 entry.Origin == ShortcutOrigin.RuntimeObserved),
             DuplicateGroups = conflicts.Count(conflict =>
-                conflict.Kind == ConflictKind.DuplicateBinding),
+                conflict.Classification == ConflictClassification.NormalDuplicate),
+            NormalDuplicates = conflicts.Count(conflict =>
+                conflict.Classification == ConflictClassification.NormalDuplicate),
             PotentialConflicts = conflicts.Count(conflict =>
-                conflict.Kind == ConflictKind.PotentialConflict),
+                conflict.Classification == ConflictClassification.PotentialConflict),
+            ConfirmedConflicts = conflicts.Count(conflict =>
+                conflict.Classification == ConflictClassification.ConfirmedConflict),
             GlobalCompetitions = conflicts.Count(conflict =>
+                conflict.Classification == ConflictClassification.ConfirmedConflict &&
                 conflict.Kind == ConflictKind.GlobalHotkeyCompetition),
+            UnknownFindings = conflicts.Count(conflict =>
+                conflict.Classification == ConflictClassification.Unknown),
+            NoConflictGroups = Math.Max(0, analyzedGroups - findingGroups),
             ByScope = byScope,
             BySource = bySource
         };

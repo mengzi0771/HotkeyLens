@@ -27,7 +27,15 @@ dotnet test tests/HotkeyLens.Core.Tests/HotkeyLens.Core.Tests.csproj -c Release 
 
 `_MSTestEnableParentProcessQuery=false` 用于绕开 Test Platform 在当前受限运行环境中尝试监听测试宿主父进程句柄时出现的 `Access denied`。这不是产品测试失败，也不影响被测程序。
 
-### 最近一次结果
+### 最近一次结果（1.1.0）
+
+```
+失败: 0，通过: 98，已跳过: 0，总计: 98
+```
+
+1.1.0 新增覆盖：五类冲突（含 Word/Excel/Chrome 同时 Ctrl+S）、同应用上下文重叠、v1 快照迁移、`.bak` 备份恢复、偏好更新字段、SemVer、24 小时节流、GitHub API 限流/网络异常/draft/prerelease、官方资产 URL、SHA256 成功/不匹配/非官方资产、取消检查。
+
+### 历史结果（1.0.0）
 
 ```
 失败: 0，通过: 67，已跳过: 0，总计: 67
@@ -39,11 +47,13 @@ dotnet test tests/HotkeyLens.Core.Tests/HotkeyLens.Core.Tests.csproj -c Release 
 |---|---|
 | `ShortcutGestureTests` | 组合键解析、规范化、虚拟键映射、无效输入 |
 | `ShortcutLinkReaderTests` | Shell Link 头读取、热键位标志、坏文件/短文件 |
-| `CatalogTests` | 内置目录资源加载、所有键位可解析、来源完整性 |
-| `ConflictAnalyzerTests` | 三类冲突规则、不同作用范围、同应用排除、序列/禁用忽略、稳定 ID |
+| `CatalogTests` | 11 个应用的目录资源加载、所有键位可解析、来源完整性 |
+| `ConflictAnalyzerTests` | 五类冲突规则、跨应用正常重复、同应用上下文重叠、全局注册证据、序列/禁用忽略、稳定 ID |
 | `ShortcutQueryTests` | 搜索字段、筛选、分类、来源、置信度、冲突过滤、排序 |
 | `ScanEngineTests` | 三种应用状态、适配器异常隔离、未知应用剔除、去重、取消、进度、诊断 |
 | `PersistenceTests` | 首次保存、覆盖保存、新实例读取、损坏 JSON、版本不匹配、并发保存、失败保留旧数据、无 tmp 残留、偏好保存 |
+| `JsonStoreTests` | `.bak` 生成与恢复、v1 快照迁移、偏好更新字段、Clear 清理备份 |
+| `UpdateServiceTests` | SemVer、节流、跳过、限流、网络失败、draft/prerelease、官方 URL、SHA256 成功/不匹配/拒绝、取消 |
 | `DiscoverySmokeTests` | 真实本机应用发现、非空、ID/路径去重、Shell 应用存在 |
 
 ### 测试隔离

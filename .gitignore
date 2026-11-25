@@ -29,7 +29,10 @@ coverage.*
 packages/
 .nuget/
 
-# Local data, temporary files, and secrets
+# Local tooling and temporary files
+.dotnet/
+.dotnet-install.ps1
+.tmp/
 *.tmp
 *.temp
 *.log

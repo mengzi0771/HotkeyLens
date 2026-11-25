@@ -51,6 +51,15 @@ public sealed record UserPreferences
     public string Theme { get; init; } = "System";
     public ScanOptions ScanOptions { get; init; } = new();
     public bool ShowWelcomeOnStartup { get; init; } = true;
+
+    /// <summary>Automatic update checks are opt-out and never install without confirmation.</summary>
+    public bool AutoCheckUpdates { get; init; } = true;
+
+    /// <summary>UTC timestamp of the last successful GitHub release check.</summary>
+    public DateTimeOffset? LastUpdateCheckUtc { get; init; }
+
+    /// <summary>Version the user explicitly skipped. Exact SemVer match only.</summary>
+    public string? SkippedVersion { get; init; }
 }
 
 public interface IUserPreferencesStore

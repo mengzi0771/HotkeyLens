@@ -62,9 +62,14 @@ public sealed record ScanStatistics
     public int UserConfiguredShortcuts { get; init; }
     public int DocumentedDefaultShortcuts { get; init; }
     public int RuntimeObservedShortcuts { get; init; }
+    /// <summary>Normal cross-application duplicates. These are not conflicts.</summary>
     public int DuplicateGroups { get; init; }
+    public int NormalDuplicates { get; init; }
     public int PotentialConflicts { get; init; }
+    public int ConfirmedConflicts { get; init; }
     public int GlobalCompetitions { get; init; }
+    public int UnknownFindings { get; init; }
+    public int NoConflictGroups { get; init; }
     public IReadOnlyDictionary<ShortcutScope, int> ByScope { get; init; } =
         new Dictionary<ShortcutScope, int>();
     public IReadOnlyDictionary<ShortcutSourceKind, int> BySource { get; init; } =
@@ -73,7 +78,7 @@ public sealed record ScanStatistics
 
 public sealed record ScanSnapshot
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
     public DateTimeOffset ScannedAt { get; init; }
@@ -85,7 +90,7 @@ public sealed record ScanSnapshot
     public IReadOnlyList<ApplicationScanResult> ApplicationResults { get; init; } = Array.Empty<ApplicationScanResult>();
     public IReadOnlyList<ScanDiagnostic> Diagnostics { get; init; } = Array.Empty<ScanDiagnostic>();
     public ScanStatistics Statistics { get; init; } = new();
-    public string EngineVersion { get; init; } = "1.0";
+    public string EngineVersion { get; init; } = "1.1";
 
     public static ScanSnapshot Empty() => new()
     {

@@ -2,7 +2,7 @@
 ; Build with packaging\build-release.ps1 so the version and compiler path are resolved consistently.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.0.0"
+  #define MyAppVersion "1.1.0"
 #endif
 #ifndef MyAppPublisher
   #define MyAppPublisher "mengzi0771"

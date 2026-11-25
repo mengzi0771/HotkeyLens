@@ -7,6 +7,7 @@ using HotkeyLens.App.Services;
 using HotkeyLens.Core.Abstractions;
 using HotkeyLens.Core.Analysis;
 using HotkeyLens.Core.Models;
+using HotkeyLens.Core.Updates;
 
 namespace HotkeyLens.App.ViewModels;
 
@@ -54,12 +55,19 @@ public sealed class MainViewModel : ObservableObject
         IScanEngine scanEngine,
         IScanSnapshotStore snapshotStore,
         IUserPreferencesStore preferencesStore,
-        string dataDirectory)
+        string dataDirectory,
+        UpdateService updateService,
+        UpdateDownloadService updateDownloadService)
     {
         _scanEngine = scanEngine;
         _snapshotStore = snapshotStore;
         _preferencesStore = preferencesStore;
         _dataDirectory = dataDirectory;
+        Update = new UpdateViewModel(
+            updateService,
+            updateDownloadService,
+            Path.Combine(dataDirectory, "updates"),
+            InstallationModeDetector.Detect());
 
         NavItems =
         [
@@ -111,10 +119,11 @@ public sealed class MainViewModel : ObservableObject
         ];
         ConflictFilterOptions =
         [
-            new OptionItem("全部结果", ""),
-            new OptionItem("全局注册竞争", nameof(ConflictKind.GlobalHotkeyCompetition)),
-            new OptionItem("潜在冲突", nameof(ConflictKind.PotentialConflict)),
-            new OptionItem("重复绑定", nameof(ConflictKind.DuplicateBinding))
+            new OptionItem("全部分析结果", ""),
+            new OptionItem("确认冲突", nameof(ConflictClassification.ConfirmedConflict)),
+            new OptionItem("潜在冲突", nameof(ConflictClassification.PotentialConflict)),
+            new OptionItem("正常重复", nameof(ConflictClassification.NormalDuplicate)),
+            new OptionItem("未知", nameof(ConflictClassification.Unknown))
         ];
 
         _selectedShortcutScope = ShortcutScopeOptions[0];
@@ -158,6 +167,7 @@ public sealed class MainViewModel : ObservableObject
     public ObservableCollection<DistributionItem> OriginDistribution { get; } = [];
 
     public SettingsViewModel Settings { get; private set; } = null!;
+    public UpdateViewModel Update { get; }
 
     public AsyncRelayCommand ScanCommand { get; }
     public RelayCommand CancelScanCommand { get; }
@@ -461,15 +471,21 @@ public sealed class MainViewModel : ObservableObject
     public bool HasNoSnapshot => !HasSnapshot;
     public bool HasShortcuts => _snapshot.Statistics.TotalShortcuts > 0;
     public bool HasNoShortcuts => !HasShortcuts;
-    public bool HasConflicts => _snapshot.Conflicts.Count > 0;
-    public bool HasNoConflicts => !HasConflicts;
+    public bool HasConflicts => _snapshot.Conflicts.Any(conflict => conflict.CountsAsConflict);
+    public bool HasNoConflicts => !HasAnalysisResults;
+    public bool HasAnalysisResults => _snapshot.Conflicts.Count > 0;
+    public bool HasNoConflictFindings => !HasConflicts;
     public bool HasApplications => _snapshot.Statistics.TotalApplications > 0;
     public bool HasDiagnostics => Diagnostics.Count > 0;
 
     public int TotalApplications => _snapshot.Statistics.TotalApplications;
     public int TotalShortcuts => _snapshot.Statistics.TotalShortcuts;
     public int DuplicateGroups => _snapshot.Statistics.DuplicateGroups;
+    public int NormalDuplicates => _snapshot.Statistics.NormalDuplicates;
     public int PotentialConflicts => _snapshot.Statistics.PotentialConflicts;
+    public int ConfirmedConflicts => _snapshot.Statistics.ConfirmedConflicts;
+    public int UnknownFindings => _snapshot.Statistics.UnknownFindings;
+    public int NoConflictGroups => _snapshot.Statistics.NoConflictGroups;
     public int GlobalCompetitions => _snapshot.Statistics.GlobalCompetitions;
     public int HighConfidenceShortcuts => _snapshot.Statistics.HighConfidenceShortcuts;
     public int UserConfiguredShortcuts => _snapshot.Statistics.UserConfiguredShortcuts;
@@ -518,6 +534,8 @@ public sealed class MainViewModel : ObservableObject
             OnDataCleared,
             ThemeManager.Apply);
         OnPropertyChanged(nameof(Settings));
+
+        await Update.RefreshPreferencesAsync();
 
         try
         {
@@ -587,7 +605,7 @@ public sealed class MainViewModel : ObservableObject
 
             ScanPhase = "完成";
             ScanPercent = 100;
-            ScanMessage = $"扫描完成：{snapshot.Statistics.TotalShortcuts} 条快捷键，{snapshot.Conflicts.Count} 组分析结果。";
+            ScanMessage = $"扫描完成：{snapshot.Statistics.TotalShortcuts} 条快捷键，{snapshot.Statistics.ConfirmedConflicts} 组确认冲突，{snapshot.Statistics.PotentialConflicts} 组潜在冲突，{snapshot.Statistics.NormalDuplicates} 组正常重复。";
             StatusMessage = $"扫描完成 · {LastScanText}";
         }
         catch (OperationCanceledException)
@@ -713,12 +731,18 @@ public sealed class MainViewModel : ObservableObject
             nameof(HasNoShortcuts),
             nameof(HasConflicts),
             nameof(HasNoConflicts),
+            nameof(HasAnalysisResults),
+            nameof(HasNoConflictFindings),
             nameof(HasApplications),
             nameof(HasDiagnostics),
             nameof(TotalApplications),
             nameof(TotalShortcuts),
             nameof(DuplicateGroups),
+            nameof(NormalDuplicates),
             nameof(PotentialConflicts),
+            nameof(ConfirmedConflicts),
+            nameof(UnknownFindings),
+            nameof(NoConflictGroups),
             nameof(GlobalCompetitions),
             nameof(HighConfidenceShortcuts),
             nameof(UserConfiguredShortcuts),
@@ -765,12 +789,18 @@ public sealed class MainViewModel : ObservableObject
             nameof(HasNoShortcuts),
             nameof(HasConflicts),
             nameof(HasNoConflicts),
+            nameof(HasAnalysisResults),
+            nameof(HasNoConflictFindings),
             nameof(HasApplications),
             nameof(HasDiagnostics),
             nameof(TotalApplications),
             nameof(TotalShortcuts),
             nameof(DuplicateGroups),
+            nameof(NormalDuplicates),
             nameof(PotentialConflicts),
+            nameof(ConfirmedConflicts),
+            nameof(UnknownFindings),
+            nameof(NoConflictGroups),
             nameof(GlobalCompetitions),
             nameof(HighConfidenceShortcuts),
             nameof(UserConfiguredShortcuts),
@@ -869,9 +899,9 @@ public sealed class MainViewModel : ObservableObject
 
     private void ApplyConflictFilter()
     {
-        var kind = ParseEnum<ConflictKind>(SelectedConflictFilter.Value);
+        var classification = ParseEnum<ConflictClassification>(SelectedConflictFilter.Value);
         FilteredConflicts.Clear();
-        foreach (var row in _allConflictRows.Where(row => kind is null || row.Conflict.Kind == kind))
+        foreach (var row in _allConflictRows.Where(row => classification is null || row.Conflict.Classification == classification))
         {
             FilteredConflicts.Add(row);
         }
