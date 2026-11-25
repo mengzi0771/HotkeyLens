@@ -13,6 +13,7 @@ public sealed record DiscoveredApplication
     public string? InstallLocation { get; init; }
     public string? Version { get; init; }
     public string? Publisher { get; init; }
+    public string? PackageFamilyName { get; init; }
     public ApplicationCategory Category { get; init; } = ApplicationCategory.Other;
     public ApplicationSourceKind SourceKind { get; init; } = ApplicationSourceKind.Unknown;
     public string SourceDetail { get; init; } = string.Empty;

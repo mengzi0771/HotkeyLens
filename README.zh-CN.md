@@ -8,6 +8,15 @@ HotkeyLens 是一款按需运行的 Windows 桌面工具，用于发现本机应
 
 它不会在后台常驻，不会持续监听键盘，也不会伪造扫描结果。扫描结果只保存在本机；唯一的可选网络请求是下文说明的更新检查。
 
+## 1.1.1 更新内容
+
+- **Microsoft Edge 身份去重**：`Application\<版本号>\msedge.exe` 会归一化到安装根目录，同时保持 Stable、Beta、Dev、Canary 为独立应用。Edge 不再在一次扫描或冲突参与者中出现两次。
+- **Windows Terminal 识别**：Microsoft Store 的 `wt.exe` 启动器会解析到包内真实 `WindowsTerminal.exe`，按 MSIX 包家族归并，并通过目录别名匹配。旧式 `keybindings` 只写 `id` 的条目现在会作为用户配置读取，而不是被丢弃。
+- **更安全的升级**：启动安装器前，HotkeyLens 会先验证安装目录是否可写；若被安全软件拦截，会明确提示旧版本和用户数据未变。安装器自身也会做写权限预检，并把关闭应用的范围限制为 `HotkeyLens.exe`。程序不会关闭安全软件，也不会静默升级。
+- **验证**：108 项自动化测试通过；本机真实扫描中 Edge 为 1 个、Windows Terminal 为 16 条（12 条官方默认、4 条用户配置）。
+
+README 中的界面截图截取自 1.1.0。1.1.1 修改的是应用发现与升级行为，页面布局未变，本轮没有重新截图。
+
 ![HotkeyLens 总览（浅色）](docs/screenshots/dashboard-light.png)
 
 ## 目录
@@ -72,8 +81,8 @@ HotkeyLens 是一款按需运行的 Windows 桌面工具，用于发现本机应
 
 - 平台：Windows 10 / Windows 11（x64）
 - 技术栈：C# / .NET 10 / WPF / Windows UI Automation
-- 当前版本：1.1.0
-- 自动化测试：98 / 98 通过
+- 当前版本：1.1.1
+- 自动化测试：108 / 108 通过
 - 当前状态：已打包为自包含 Windows x64 安装版和便携版；快捷键管理仅提供安全的只读定位，不自动改写第三方配置
 
 ## 核心能力
@@ -263,7 +272,7 @@ src/HotkeyLens.App/bin/Release/net10.0-windows/HotkeyLens.exe
 ### 构建发行包
 
 ```powershell
-.\packaging\build-release.ps1 -Version 1.1.0
+.\packaging\build-release.ps1 -Version 1.1.1
 ```
 
 脚本会发布自包含 `win-x64` 版本、生成便携 ZIP、编译 Inno Setup 安装器，并在 `artifacts\dist` 写入 `SHA256SUMS.txt`。如果 Inno Setup 安装在非默认位置，传入 `-InnoCompiler <ISCC.exe 路径>`。
@@ -311,10 +320,10 @@ dotnet test tests/HotkeyLens.Core.Tests/HotkeyLens.Core.Tests.csproj `
 最近一次结果：
 
 ```
-失败: 0，通过: 98，已跳过: 0，总计: 98
+失败: 0，通过: 108，已跳过: 0，总计: 108
 ```
 
-测试覆盖按键解析、真实应用发现冒烟、快捷方式头解析、来源目录、查询筛选、冲突规则、扫描引擎状态机、快照/偏好持久化、并发保存和保存失败保护。
+测试覆盖按键解析、真实应用发现冒烟、Edge 版本路径归一化与渠道隔离、Windows Terminal 包身份与旧式 `keybindings`、快捷方式头解析、来源目录、查询筛选、冲突规则、扫描引擎状态机、快照/偏好持久化、并发保存、保存失败保护、`.bak` 恢复以及更新版本与 SHA256 校验。
 
 界面验收使用真实扫描数据和 Windows UI Automation 操作完成，覆盖五页导航、搜索、详情、主题切换、首次扫描、覆盖保存、失败保护、重启恢复和退出行为。详见 [docs/TESTING.md](docs/TESTING.md)。
 
@@ -342,6 +351,8 @@ HotkeyLens 只将自己的设置与扫描快照写入 `%LOCALAPPDATA%\HotkeyLens
 - 不把保存失败报告为成功。
 
 遇到此情况，请将 `HotkeyLens.exe`（安装时还包括 `HotkeyLens-Setup.exe`）加入安全软件的信任/应用放行列表。不要为了运行 HotkeyLens 而关闭全系统防护。本项目没有声称通过所有杀毒软件检测，发行文件也没有数字签名，因此 Windows 可能显示“未知发布者”。运行前请核对同一个发行版中的 SHA256。
+
+升级时，应用控制软件可能拦截未签名安装器替换旧的 `unins000.exe`。本次实测中安装器回滚成功，旧版本仍可继续使用。1.1.1 会在启动安装器前探测安装目录，并明确说明当前版本和用户数据未变；安装器自身也会做写权限预检，并保持交互式向导。若拦截持续存在，请在安全软件中放行该安装器，或等待带签名的版本。HotkeyLens 不会关闭防护，也不声称已经消除该拦截。
 
 ## 后续方向
 

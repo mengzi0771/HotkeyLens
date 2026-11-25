@@ -202,6 +202,24 @@ public sealed class UpdateViewModel : ObservableObject
 
             if (_installationMode == InstallationMode.Installed)
             {
+                var installDirectory = InstallationModeDetector.GetInstallDirectory();
+                var writeError = ProbeInstallDirectory(installDirectory);
+                if (writeError is not null)
+                {
+                    StatusMessage = $"安装目录不可写，未启动安装：{writeError}";
+                    MessageBox.Show(
+                        Application.Current?.MainWindow,
+                        $"HotkeyLens 未启动安装程序，当前版本和用户数据都没有变化。\n\n" +
+                        $"安装目录：{installDirectory}\n" +
+                        $"写入检查：{writeError}\n\n" +
+                        "这通常由目录权限或安全软件主动防御造成。请允许安装程序写入该目录后重试；" +
+                        "不要为了安装而关闭安全软件。也可以稍后手动运行已下载的安装包。",
+                        "HotkeyLens · 无法准备升级",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
                 var confirmed = MessageBox.Show(
                     Application.Current?.MainWindow,
                     $"安装包已下载并通过 SHA256 校验。\n\n{path}\n\n现在将关闭 HotkeyLens 并启动安装程序完成覆盖升级；" +
@@ -216,7 +234,20 @@ public sealed class UpdateViewModel : ObservableObject
                     return;
                 }
 
-                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                try
+                {
+                    Process.Start(new ProcessStartInfo(path, "/NORESTART")
+                    {
+                        UseShellExecute = true,
+                        WorkingDirectory = Path.GetDirectoryName(path) ?? AppContext.BaseDirectory
+                    });
+                }
+                catch (System.ComponentModel.Win32Exception exception)
+                {
+                    StatusMessage = $"无法启动安装程序，当前版本不受影响：{exception.Message}";
+                    return;
+                }
+
                 StatusMessage = "正在启动安装程序…";
                 Application.Current?.Shutdown();
             }
@@ -306,6 +337,31 @@ public sealed class UpdateViewModel : ObservableObject
         {
             UseShellExecute = true
         });
+    }
+
+    private static string? ProbeInstallDirectory(string directory)
+    {
+        try
+        {
+            var probe = Path.Combine(directory, $".hotkeylens-write-{Guid.NewGuid():N}.tmp");
+            using (new FileStream(
+                       probe,
+                       FileMode.CreateNew,
+                       FileAccess.Write,
+                       FileShare.None,
+                       1,
+                       FileOptions.DeleteOnClose))
+            {
+            }
+
+            return null;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
+                                           or System.Security.SecurityException or NotSupportedException
+                                           or ArgumentException)
+        {
+            return exception.Message;
+        }
     }
 
     private void SetRelease(UpdateRelease? release)

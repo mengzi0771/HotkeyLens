@@ -5,7 +5,7 @@ param(
     [string]$PortableArchive,
     [string]$Checksums,
     [string]$WorkRoot,
-    [string]$ExpectedVersion = '1.1.0',
+    [string]$ExpectedVersion = '1.1.1',
     [string]$UpgradeExpectedVersion = '1.1.1',
     [switch]$AllowDefaultDataSentinel
 )

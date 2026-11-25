@@ -27,13 +27,21 @@ dotnet test tests/HotkeyLens.Core.Tests/HotkeyLens.Core.Tests.csproj -c Release 
 
 `_MSTestEnableParentProcessQuery=false` 用于绕开 Test Platform 在当前受限运行环境中尝试监听测试宿主父进程句柄时出现的 `Access denied`。这不是产品测试失败，也不影响被测程序。
 
-### 最近一次结果（1.1.0）
+### 最近一次结果（1.1.1）
+
+```
+失败: 0，通过: 108，已跳过: 0，总计: 108
+```
+
+1.1.1 新增覆盖：Edge 版本路径归一化与 Stable/Beta/Dev/Canary 隔离、MSIX 包家族解析、按包家族/别名匹配目录、`wt.exe` 到包内 `WindowsTerminal.exe` 的解析、旧式 Windows Terminal `keybindings` 的 `id` 回退。
+
+### 历史结果（1.1.0）
 
 ```
 失败: 0，通过: 98，已跳过: 0，总计: 98
 ```
 
-1.1.0 新增覆盖：五类冲突（含 Word/Excel/Chrome 同时 Ctrl+S）、同应用上下文重叠、v1 快照迁移、`.bak` 备份恢复、偏好更新字段、SemVer、24 小时节流、GitHub API 限流/网络异常/draft/prerelease、官方资产 URL、SHA256 成功/不匹配/非官方资产、取消检查。
+1.1.0 覆盖：五类冲突（含 Word/Excel/Chrome 同时 Ctrl+S）、同应用上下文重叠、v1 快照迁移、`.bak` 备份恢复、偏好更新字段、SemVer、24 小时节流、GitHub API 限流/网络异常/draft/prerelease、官方资产 URL、SHA256 成功/不匹配/非官方资产、取消检查。
 
 ### 历史结果（1.0.0）
 
@@ -54,6 +62,8 @@ dotnet test tests/HotkeyLens.Core.Tests/HotkeyLens.Core.Tests.csproj -c Release 
 | `PersistenceTests` | 首次保存、覆盖保存、新实例读取、损坏 JSON、版本不匹配、并发保存、失败保留旧数据、无 tmp 残留、偏好保存 |
 | `JsonStoreTests` | `.bak` 生成与恢复、v1 快照迁移、偏好更新字段、Clear 清理备份 |
 | `UpdateServiceTests` | SemVer、节流、跳过、限流、网络失败、draft/prerelease、官方 URL、SHA256 成功/不匹配/拒绝、取消 |
+| `ApplicationIdentityTests` | Edge 版本目录折叠、渠道隔离、根 exe 缺失不虚构、WT shim 解析、包家族名解析、包身份合并与目录匹配 |
+| `WindowsTerminalSettingsTests` | 旧式 `id` 回退、现代 `command.action` 优先、缺失命令忽略 |
 | `DiscoverySmokeTests` | 真实本机应用发现、非空、ID/路径去重、Shell 应用存在 |
 
 ### 测试隔离

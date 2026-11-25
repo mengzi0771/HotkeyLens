@@ -13,6 +13,31 @@ public static class InstallationModeDetector
     private const string UninstallKey =
         @"Software\Microsoft\Windows\CurrentVersion\Uninstall\{26F1B708-3044-44E6-BA58-9D3BD08AB3D9}_is1";
 
+    public static string GetInstallDirectory()
+    {
+        if (Detect() == InstallationMode.Portable)
+        {
+            return AppContext.BaseDirectory;
+        }
+
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(UninstallKey);
+            if (key?.GetValue("InstallLocation") is string location &&
+                !string.IsNullOrWhiteSpace(location) &&
+                Directory.Exists(location))
+            {
+                return location;
+            }
+        }
+        catch (Exception exception) when (exception is System.Security.SecurityException or UnauthorizedAccessException)
+        {
+            // Fall back to the directory containing the running executable.
+        }
+
+        return AppContext.BaseDirectory;
+    }
+
     public static InstallationMode Detect()
     {
         // A marker travels with the extracted archive. Check it first: a user can

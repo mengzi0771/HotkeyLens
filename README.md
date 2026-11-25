@@ -8,6 +8,15 @@ HotkeyLens is an on-demand Windows desktop tool for discovering installed applic
 
 It does not run in the background, does not continuously monitor the keyboard, and does not fabricate scan results. Scan data stays on your machine; the only optional network request is the update check described below.
 
+## What's new in 1.1.1
+
+- **Microsoft Edge identity:** versioned `Application\<version>\msedge.exe` paths are normalized to the installation root, while Stable, Beta, Dev and Canary installations remain separate. Edge no longer appears twice in a scan or conflict participant list.
+- **Windows Terminal discovery:** the Microsoft Store `wt.exe` launcher shim is resolved to the packaged `WindowsTerminal.exe`, grouped by MSIX package family, and matched through catalog aliases. Legacy `keybindings` that only use an `id` are now read as user configuration instead of being discarded.
+- **Safer upgrades:** before starting the installer, HotkeyLens verifies that the installation directory is writable and reports a clear message if security software blocks the replacement. The installer also performs its own write check and restricts its close-application handling to `HotkeyLens.exe`. The app never disables security software and never runs a silent upgrade.
+- **Validation:** 108 automated tests pass; a real local scan now finds one Edge entry and 16 Windows Terminal bindings (12 documented defaults, 4 user-configured).
+
+The screenshots in this README were captured for 1.1.0. The 1.1.1 fixes change discovery and upgrade behavior, not the page layout, and the screenshots were not recaptured.
+
 ![HotkeyLens dashboard in the light theme](docs/screenshots/dashboard-light.png)
 
 ## Contents
@@ -72,8 +81,8 @@ Extract `HotkeyLens-Portable-win-x64.zip` to a folder you control and run `Hotke
 
 - Platform: Windows 10 / Windows 11 (x64)
 - Stack: C# / .NET 10 / WPF / Windows UI Automation
-- Current version: 1.1.0
-- Automated tests: 98 / 98 passing
+- Current version: 1.1.1
+- Automated tests: 108 / 108 passing
 - Status: builds, runs, and is packaged as a self-contained Windows x64 installation and portable build. Shortcut management is intentionally limited to safe, read-only navigation to an application's settings or configuration source; HotkeyLens does not rewrite third-party configurations.
 
 ## Core capabilities
@@ -263,7 +272,7 @@ It requires the .NET 10 Desktop Runtime on the target machine. This is not the b
 ### Build release packages
 
 ```powershell
-.\packaging\build-release.ps1 -Version 1.1.0
+.\packaging\build-release.ps1 -Version 1.1.1
 ```
 
 The script publishes a self-contained `win-x64` build, creates the portable ZIP, compiles the Inno Setup installer, and writes `SHA256SUMS.txt` under `artifacts\dist`. If Inno Setup is installed in a non-standard location, pass `-InnoCompiler <path-to-ISCC.exe>`.
@@ -311,10 +320,10 @@ dotnet test tests/HotkeyLens.Core.Tests/HotkeyLens.Core.Tests.csproj `
 Latest result:
 
 ```
-Failed: 0, Passed: 67, Skipped: 0, Total: 67
+Failed: 0, Passed: 108, Skipped: 0, Total: 108
 ```
 
-Coverage includes gesture parsing, real application-discovery smoke tests, shortcut-header parsing, the built-in catalog, query filtering, conflict rules, scan-engine state transitions, snapshot/preference persistence, concurrent saves, and failed-save protection.
+Coverage includes gesture parsing, real application-discovery smoke tests, Edge version-path canonicalization and channel isolation, Windows Terminal package identity and legacy `keybindings`, shortcut-header parsing, the built-in catalog, query filtering, conflict rules, scan-engine state transitions, snapshot/preference persistence, concurrent saves, failed-save protection, `.bak` recovery, and update version/SHA256 handling.
 
 UI acceptance was performed with real scan data and Windows UI Automation, covering navigation across all five pages, search, details, theme switching, first scan, overwrite, failure protection, restart recovery, and clean exit. See [docs/TESTING.md](docs/TESTING.md) (Chinese).
 
@@ -341,6 +350,8 @@ HotkeyLens writes its own settings and scan snapshots under `%LOCALAPPDATA%\Hotk
 - does not claim that the scan was saved.
 
 If this happens, add `HotkeyLens.exe` (and, for installation, `HotkeyLens-Setup.exe`) to the security product's trusted/application list. Do not disable system-wide protection just to run HotkeyLens. No compatibility with every antivirus product is claimed or tested; the release has no digital signature, so Windows may show an "Unknown publisher" warning. Verify the SHA256 hash from the same release before running either package.
+
+During an upgrade, application-control software may block an unsigned installer from replacing the previous `unins000.exe`. In the tested case the installer rolled back and left the old version usable. HotkeyLens 1.1.1 now probes the installation directory before launch and explains that the current version and user data are unchanged; the installer performs the same write check and keeps the wizard interactive. If the block persists, allow the installer in the security product or wait for a signed release. HotkeyLens does not disable protection, and it does not claim that the block has been eliminated.
 
 ## Roadmap
 

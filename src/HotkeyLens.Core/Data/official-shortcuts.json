@@ -54,6 +54,8 @@
       "vendor": "Microsoft",
       "category": "Development",
       "processNames": [ "WindowsTerminal.exe", "WindowsTerminalPreview.exe" ],
+      "aliases": [ "wt.exe" ],
+      "packageFamilyNames": [ "Microsoft.WindowsTerminal_8wekyb3d8bbwe", "Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe" ],
       "sourceName": "Windows Terminal 官方默认按键绑定",
       "sourceReference": "https://learn.microsoft.com/en-us/windows/terminal/customize-settings/actions",
       "settingsHint": "用户 settings.json 由 HotkeyLens 只读扫描；修改请在 Windows Terminal 设置中完成。",

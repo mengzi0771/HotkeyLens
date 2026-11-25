@@ -2,7 +2,7 @@
 ; Build with packaging\build-release.ps1 so the version and compiler path are resolved consistently.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.1.0"
+  #define MyAppVersion "1.1.1"
 #endif
 #ifndef MyAppPublisher
   #define MyAppPublisher "mengzi0771"
@@ -45,6 +45,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763
 CloseApplications=yes
+CloseApplicationsFilter=HotkeyLens.exe
 RestartApplications=no
 UsePreviousAppDir=yes
 UsePreviousTasks=yes
@@ -74,3 +75,25 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 
 ; Deliberately no [UninstallDelete] for user data. HotkeyLens stores data in
 ; %LOCALAPPDATA%\HotkeyLens, outside {app}, and upgrades/uninstall must preserve it.
+
+[Code]
+// Fail early with an actionable message when the install directory cannot be
+// written. Inno Setup still owns the actual file replacement and rollback.
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ProbePath: String;
+begin
+  Result := '';
+  if not DirExists(ExpandConstant('{app}')) then
+    Exit;
+
+  ProbePath := ExpandConstant('{app}\.hotkeylens-write-probe.tmp');
+  if not SaveStringToFile(ProbePath, 'probe', False) then
+  begin
+    Result := '无法写入安装目录。请检查目录权限或安全软件主动防御设置；' +
+              'HotkeyLens 不会关闭或绕过安全软件。当前版本和用户数据不会被修改。';
+    Exit;
+  end;
+
+  DeleteFile(ProbePath);
+end;

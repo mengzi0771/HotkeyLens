@@ -39,15 +39,22 @@ public sealed class ShortcutCatalog
     public IEnumerable<CatalogApplicationDefinition> Match(DiscoveredApplication application)
     {
         var processName = application.ProcessName;
-        if (string.IsNullOrWhiteSpace(processName))
+        if (string.IsNullOrWhiteSpace(processName) &&
+            string.IsNullOrWhiteSpace(application.PackageFamilyName))
         {
             yield break;
         }
 
         foreach (var catalogApplication in Applications)
         {
-            if (catalogApplication.ProcessNames.Any(candidate =>
-                    string.Equals(candidate, processName, StringComparison.OrdinalIgnoreCase)))
+            var matchesProcessName = !string.IsNullOrWhiteSpace(processName) &&
+                                     catalogApplication.ProcessNames
+                                         .Concat(catalogApplication.Aliases)
+                                         .Any(candidate => string.Equals(candidate, processName, StringComparison.OrdinalIgnoreCase));
+            var matchesPackage = !string.IsNullOrWhiteSpace(application.PackageFamilyName) &&
+                                 catalogApplication.PackageFamilyNames.Any(candidate =>
+                                     string.Equals(candidate, application.PackageFamilyName, StringComparison.OrdinalIgnoreCase));
+            if (matchesProcessName || matchesPackage)
             {
                 yield return catalogApplication;
             }
@@ -62,6 +69,10 @@ public sealed record CatalogApplicationDefinition
     public required string Vendor { get; init; }
     public ApplicationCategory Category { get; init; } = ApplicationCategory.Other;
     public IReadOnlyList<string> ProcessNames { get; init; } = Array.Empty<string>();
+    /// <summary>Additional process names accepted for this application, such as a launcher shim.</summary>
+    public IReadOnlyList<string> Aliases { get; init; } = Array.Empty<string>();
+    /// <summary>MSIX/AppX package family names accepted for this application.</summary>
+    public IReadOnlyList<string> PackageFamilyNames { get; init; } = Array.Empty<string>();
     public required string SourceName { get; init; }
     public required string SourceReference { get; init; }
     public IReadOnlyList<string> Platforms { get; init; } = Array.Empty<string>();

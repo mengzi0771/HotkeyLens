@@ -30,11 +30,14 @@ public static class ApplicationMerger
 
             var primary = records[0];
             var executable = records
-                .Select(c => c.ExecutablePath)
+                .Select(c => ApplicationIdentity.CanonicalizeExecutablePath(c.ExecutablePath))
                 .Where(path => !string.IsNullOrWhiteSpace(path))
-                .Select(path => path!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderByDescending(File.Exists)
                 .FirstOrDefault();
+            var packageFamilyName = records
+                .Select(c => ApplicationIdentity.GetPackageFamilyName(c.ExecutablePath))
+                .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
             var icon = records
                 .Select(c => c.IconPath)
                 .Where(path => !string.IsNullOrWhiteSpace(path))
@@ -42,10 +45,11 @@ public static class ApplicationMerger
                 .OrderByDescending(path => path.EndsWith(".ico", StringComparison.OrdinalIgnoreCase))
                 .FirstOrDefault() ?? executable;
 
-            var name = records
-                .Select(c => c.Name.Trim())
-                .OrderByDescending(c => SourcePriority(records.First(r => r.Name.Trim() == c).SourceKind))
-                .First();
+            var name = ApplicationIdentity.GetPackageDisplayName(packageFamilyName)
+                ?? records
+                    .Select(c => c.Name.Trim())
+                    .OrderByDescending(c => SourcePriority(records.First(r => r.Name.Trim() == c).SourceKind))
+                    .First();
             name = ParentheticalSuffix.Replace(name, string.Empty);
 
             var installLocation = records
@@ -76,9 +80,11 @@ public static class ApplicationMerger
                     .Distinct(StringComparer.CurrentCultureIgnoreCase));
 
             var settings = records.FirstOrDefault(c => !string.IsNullOrWhiteSpace(c.SettingsPath));
-            var id = string.IsNullOrWhiteSpace(executable)
-                ? StableId.Create("app", NormalizeName(name), publisher)
-                : StableId.Create("app", StableId.NormalizePath(executable));
+            var id = !string.IsNullOrWhiteSpace(packageFamilyName)
+                ? StableId.Create("app", "package", packageFamilyName)
+                : string.IsNullOrWhiteSpace(executable)
+                    ? StableId.Create("app", NormalizeName(name), publisher)
+                    : StableId.Create("app", StableId.NormalizePath(executable));
 
             result.Add(new DiscoveredApplication
             {
@@ -89,6 +95,7 @@ public static class ApplicationMerger
                 InstallLocation = installLocation,
                 Version = version,
                 Publisher = publisher,
+                PackageFamilyName = packageFamilyName,
                 Category = category,
                 SourceKind = primary.SourceKind,
                 SourceDetail = sourceDetail,
@@ -105,9 +112,16 @@ public static class ApplicationMerger
 
     private static string CreateGroupingKey(ApplicationCandidate candidate)
     {
+        var packageFamilyName = ApplicationIdentity.GetPackageFamilyName(candidate.ExecutablePath);
+        if (!string.IsNullOrWhiteSpace(packageFamilyName))
+        {
+            return "package:" + packageFamilyName.ToLowerInvariant();
+        }
+
         if (!string.IsNullOrWhiteSpace(candidate.ExecutablePath))
         {
-            return "exe:" + StableId.NormalizePath(candidate.ExecutablePath);
+            return "exe:" + StableId.NormalizePath(
+                ApplicationIdentity.CanonicalizeExecutablePath(candidate.ExecutablePath));
         }
 
         return "name:" + NormalizeName(candidate.Name) + "|" + (candidate.Publisher ?? string.Empty).ToLowerInvariant();

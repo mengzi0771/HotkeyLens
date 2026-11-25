@@ -6,7 +6,7 @@ on:
       version:
         description: Version in x.y.z form (used when building manually)
         required: true
-        default: 1.1.0
+        default: 1.1.1
   push:
     tags:
       - 'v*'
@@ -67,6 +67,7 @@ jobs:
           -PortableArchive artifacts/dist/HotkeyLens-Portable-win-x64.zip
           -Checksums artifacts/dist/SHA256SUMS.txt
           -WorkRoot artifacts/release-verify
+          -ExpectedVersion '${{ steps.version.outputs.version }}'
           -AllowDefaultDataSentinel
 
       - name: Upload build artifacts

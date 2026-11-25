@@ -1,4 +1,4 @@
-HotkeyLens 1.1.0 — Portable (Windows x64)
+HotkeyLens 1.1.1 — Portable (Windows x64)
 
 Run HotkeyLens.exe from this folder. No installation and no .NET runtime are required.
 

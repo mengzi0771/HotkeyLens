@@ -45,7 +45,17 @@ public sealed class WindowsTerminalSettingsAdapter : IShortcutSourceAdapter
             ["scrollDown"] = "向下滚动",
             ["increaseFontSize"] = "增大字号",
             ["decreaseFontSize"] = "减小字号",
-            ["resetFontSize"] = "重置字号"
+            ["resetFontSize"] = "重置字号",
+            ["Terminal.CopyToClipboard"] = "复制",
+            ["Terminal.PasteFromClipboard"] = "粘贴",
+            ["Terminal.FindText"] = "查找",
+            ["Terminal.DuplicatePaneAuto"] = "复制当前窗格",
+            ["Terminal.SplitPaneDown"] = "向下拆分窗格",
+            ["Terminal.SplitPaneRight"] = "向右拆分窗格",
+            ["Terminal.OpenSettings"] = "打开设置",
+            ["Terminal.ToggleFullscreen"] = "切换全屏",
+            ["Terminal.ToggleFocusMode"] = "切换焦点模式",
+            ["Terminal.CommandPalette"] = "命令面板"
         };
 
     public string Id => "windows-terminal-settings";
@@ -154,9 +164,7 @@ public sealed class WindowsTerminalSettingsAdapter : IShortcutSourceAdapter
                         var contextText = string.IsNullOrWhiteSpace(when)
                             ? "Windows Terminal 窗口"
                             : $"when: {when}";
-                        var action = KnownActions.TryGetValue(command, out var known)
-                            ? known
-                            : $"Terminal 命令“{command}”";
+                        var action = ResolveActionName(command);
 
                         foreach (var key in EnumerateKeys(keysElement))
                         {
@@ -228,23 +236,33 @@ public sealed class WindowsTerminalSettingsAdapter : IShortcutSourceAdapter
         return result;
     }
 
-    private static string? ReadCommand(JsonElement item)
+    internal static string ResolveActionName(string command)
+        => KnownActions.TryGetValue(command, out var known)
+            ? known
+            : $"Terminal 命令“{command}”";
+
+    internal static string? ReadCommand(JsonElement item)
     {
-        if (!item.TryGetProperty("command", out var command))
+        if (item.TryGetProperty("command", out var command))
         {
-            return null;
+            if (command.ValueKind == JsonValueKind.String)
+            {
+                return command.GetString();
+            }
+
+            if (command.ValueKind == JsonValueKind.Object &&
+                command.TryGetProperty("action", out var action) &&
+                action.ValueKind == JsonValueKind.String)
+            {
+                return action.GetString();
+            }
         }
 
-        if (command.ValueKind == JsonValueKind.String)
+        // Older Terminal settings and the legacy keybindings array identify
+        // the action with "id" instead of "command".
+        if (item.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String)
         {
-            return command.GetString();
-        }
-
-        if (command.ValueKind == JsonValueKind.Object &&
-            command.TryGetProperty("action", out var action) &&
-            action.ValueKind == JsonValueKind.String)
-        {
-            return action.GetString();
+            return id.GetString();
         }
 
         return null;
