@@ -99,6 +99,7 @@ public sealed class OfficialShortcutAdapter : IShortcutSourceAdapter
                     Origin = ShortcutOrigin.OfficialDefault,
                     Context = shortcut.Context,
                     RawValue = shortcut.Sequence ?? shortcut.Keys,
+                    ResolutionGuide = catalog.ResolutionGuide,
                     CapturedAt = context.StartedAt
                 };
 

@@ -19,6 +19,21 @@ public sealed record DiscoveredApplication
     public string SourceDetail { get; init; } = string.Empty;
     public string? SettingsPath { get; init; }
     public string? SettingsHint { get; init; }
+
+    /// <summary>Plain-language steps for changing this application's global hotkeys.</summary>
+    public string ResolutionGuide { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Whether the executable was observed in the process list when the scan
+    /// started. Runtime state is a snapshot in time and never a live monitor.
+    /// </summary>
+    /// <summary>
+    /// True when the process (or one of its visible top-level windows) was observed
+    /// during the scan; false when a complete process snapshot did not contain it;
+    /// null when the snapshot could not be trusted (filtered process table).
+    /// </summary>
+    public bool? IsRunning { get; init; }
+
     public bool IsSystemComponent { get; init; }
 
     public string ProcessName => string.IsNullOrWhiteSpace(ExecutablePath)

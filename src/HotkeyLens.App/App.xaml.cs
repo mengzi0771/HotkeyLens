@@ -52,6 +52,8 @@ public partial class App : Application
             [
                 new OfficialShortcutAdapter(ShortcutCatalog.Default),
                 new ShortcutFileAdapter(),
+                new ChromiumExtensionShortcutsAdapter(),
+                new SnipasteConfigAdapter(),
                 new VsCodeKeybindingsAdapter(),
                 new WindowsTerminalSettingsAdapter(),
                 new JetBrainsKeymapAdapter(),
@@ -59,7 +61,10 @@ public partial class App : Application
                 new UiAutomationShortcutAdapter()
             ];
 
-            var engine = new ScanEngine(new ApplicationDiscoveryService(), adapters);
+            var engine = new ScanEngine(
+                new ApplicationDiscoveryService(),
+                adapters,
+                new ProcessSnapshotProvider());
             var snapshotStore = new JsonScanSnapshotStore(dataDirectory);
             var preferencesStore = new JsonUserPreferencesStore(dataDirectory);
             var updateService = new UpdateService(

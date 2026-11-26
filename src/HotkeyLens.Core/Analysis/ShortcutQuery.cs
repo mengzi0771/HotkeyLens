@@ -23,8 +23,22 @@ public sealed record ShortcutFilter
     public ConfidenceLevel? MinimumConfidence { get; init; }
     public ShortcutOrigin? Origin { get; init; }
     public bool OnlyConflicting { get; init; }
+
+    /// <summary>
+    /// Keeps the default list focused on shortcuts ordinary users actually run
+    /// into: global (system-wide) hotkeys and Windows shell keys. Per-application
+    /// editor bindings stay available behind an explicit "all" view.
+    /// </summary>
+    public bool ImportantOnly { get; init; }
+
     public ShortcutSortField SortBy { get; init; } = ShortcutSortField.Gesture;
     public bool SortDescending { get; init; }
+}
+
+public static class ShortcutFocus
+{
+    public static bool IsImportant(ShortcutEntry shortcut, ApplicationCategory? category)
+        => shortcut.Scope == ShortcutScope.Global || category == ApplicationCategory.System;
 }
 
 /// <summary>
@@ -79,6 +93,21 @@ public static class ShortcutQuery
                 if (categories is null ||
                     !categories.TryGetValue(shortcut.ApplicationId, out var category) ||
                     category != filter.Category)
+                {
+                    return false;
+                }
+            }
+
+            if (filter.ImportantOnly)
+            {
+                ApplicationCategory? resolvedCategory = null;
+                if (categories is not null &&
+                    categories.TryGetValue(shortcut.ApplicationId, out var knownCategory))
+                {
+                    resolvedCategory = knownCategory;
+                }
+
+                if (!ShortcutFocus.IsImportant(shortcut, resolvedCategory))
                 {
                     return false;
                 }

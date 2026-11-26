@@ -23,6 +23,8 @@ public enum ApplicationSourceKind
     StartMenu,
     AppPath,
     Package,
+    /// <summary>A portable or per-user installation found at a well-known path.</summary>
+    KnownLocation,
     Unknown
 }
 

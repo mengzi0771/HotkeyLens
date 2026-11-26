@@ -160,6 +160,111 @@ public sealed class ScanEngineTests
         Assert.Contains(diagnostic, snapshot.Diagnostics);
     }
 
+    [Fact]
+    public async Task RunningProcessSnapshotMarksApplicationsAndGlobalCompetition()
+    {
+        var alpha = TestData.Application("alpha", "网易云音乐", @"C:\Apps\cloudmusic.exe");
+        var beta = TestData.Application("beta", "QQ音乐", @"C:\Apps\QQMusic.exe");
+        var discovery = new FakeDiscovery([alpha, beta]);
+        var adapter = new FakeAdapter(result =>
+        {
+            result.CoveredApplicationIds.Add(alpha.Id);
+            result.CoveredApplicationIds.Add(beta.Id);
+            result.Shortcuts.Add(TestData.Entry(
+                alpha, "Ctrl+Alt+P", ShortcutScope.Global, ShortcutSourceKind.OfficialDocumentation,
+                ShortcutOrigin.OfficialDefault, ConfidenceLevel.Medium, "播放 / 暂停"));
+            result.Shortcuts.Add(TestData.Entry(
+                beta, "Ctrl+Alt+P", ShortcutScope.Global, ShortcutSourceKind.OfficialDocumentation,
+                ShortcutOrigin.OfficialDefault, ConfidenceLevel.Medium, "播放 / 暂停"));
+            return result;
+        });
+        var probe = new FakeProbe(["cloudmusic.exe", "QQMusic.exe"]);
+
+        var snapshot = await new ScanEngine(discovery, [adapter], probe)
+            .ScanAsync(new ScanOptions(), null, CancellationToken.None);
+
+        Assert.All(snapshot.Applications, application => Assert.True(application.IsRunning));
+        Assert.Equal(2, snapshot.Statistics.RunningApplications);
+        Assert.Equal(2, snapshot.Statistics.GlobalShortcuts);
+        Assert.Equal(2, snapshot.Statistics.GlobalShortcutsFromRunningApplications);
+
+        var conflict = Assert.Single(snapshot.Conflicts);
+        Assert.Equal(ConflictKind.GlobalHotkeyCompetition, conflict.Kind);
+        Assert.Equal(ConflictSeverity.Medium, conflict.Severity);
+        Assert.All(conflict.Participants, participant => Assert.True(participant.IsRunning));
+    }
+
+    [Fact]
+    public async Task OneProcessMissingDowngradesGlobalCompetition()
+    {
+        var alpha = TestData.Application("alpha", "网易云音乐", @"C:\Apps\cloudmusic.exe");
+        var beta = TestData.Application("beta", "QQ音乐", @"C:\Apps\QQMusic.exe");
+        var discovery = new FakeDiscovery([alpha, beta]);
+        var adapter = new FakeAdapter(result =>
+        {
+            result.CoveredApplicationIds.Add(alpha.Id);
+            result.CoveredApplicationIds.Add(beta.Id);
+            result.Shortcuts.Add(TestData.Entry(alpha, "Ctrl+Alt+Left", ShortcutScope.Global));
+            result.Shortcuts.Add(TestData.Entry(beta, "Ctrl+Alt+Left", ShortcutScope.Global));
+            return result;
+        });
+        var probe = new FakeProbe(["cloudmusic.exe"]);
+
+        var snapshot = await new ScanEngine(discovery, [adapter], probe)
+            .ScanAsync(new ScanOptions(), null, CancellationToken.None);
+
+        Assert.False(snapshot.Applications.Single(application => application.Id == beta.Id).IsRunning);
+        var conflict = Assert.Single(snapshot.Conflicts);
+        Assert.Equal(ConflictSeverity.Low, conflict.Severity);
+        Assert.Contains("未检测到运行", conflict.Summary, StringComparison.Ordinal);
+        Assert.Equal(1, snapshot.Statistics.RunningApplications);
+        Assert.Equal(1, snapshot.Statistics.GlobalShortcutsFromRunningApplications);
+    }
+
+    [Fact]
+    public async Task ScanWithoutProbeKeepsRuntimeStateUnknown()
+    {
+        var discovery = new FakeDiscovery([Alpha]);
+        var adapter = new FakeAdapter(result => result);
+
+        var snapshot = await new ScanEngine(discovery, [adapter])
+            .ScanAsync(new ScanOptions(), null, CancellationToken.None);
+
+        Assert.Null(snapshot.Applications.Single().IsRunning);
+        Assert.Equal(0, snapshot.Statistics.RunningApplications);
+    }
+
+    [Fact]
+    public async Task FilteredProcessSnapshotDegradesUnmatchedApplicationsToUnknown()
+    {
+        var alpha = TestData.Application("alpha", "网易云音乐", @"C:\Apps\cloudmusic.exe");
+        var beta = TestData.Application("beta", "QQ音乐", @"C:\Apps\QQMusic.exe");
+        var discovery = new FakeDiscovery([alpha, beta]);
+        var adapter = new FakeAdapter(result =>
+        {
+            result.CoveredApplicationIds.Add(alpha.Id);
+            result.CoveredApplicationIds.Add(beta.Id);
+            result.Shortcuts.Add(TestData.Entry(alpha, "Ctrl+Alt+Left", ShortcutScope.Global));
+            result.Shortcuts.Add(TestData.Entry(beta, "Ctrl+Alt+Left", ShortcutScope.Global));
+            return result;
+        });
+        var probe = new FakeProbe(["cloudmusic.exe"], isComplete: false);
+
+        var snapshot = await new ScanEngine(discovery, [adapter], probe)
+            .ScanAsync(new ScanOptions(), null, CancellationToken.None);
+
+        var alphaApp = snapshot.Applications.Single(application => application.Id == alpha.Id);
+        var betaApp = snapshot.Applications.Single(application => application.Id == beta.Id);
+        Assert.True(alphaApp.IsRunning);
+        Assert.Null(betaApp.IsRunning);
+        Assert.Equal(1, snapshot.Statistics.RunningApplications);
+
+        var conflict = Assert.Single(snapshot.Conflicts);
+        Assert.Equal(ConflictSeverity.Low, conflict.Severity);
+        Assert.Contains("没有采集到全部运行状态", conflict.Summary, StringComparison.Ordinal);
+        Assert.Null(conflict.Participants.Single(participant => participant.ApplicationId == beta.Id).IsRunning);
+    }
+
     private static bool IsMonotonic(IEnumerable<double> values)
     {
         double? previous = null;
@@ -237,6 +342,20 @@ public sealed class ScanEngineTests
             });
             return Task.FromResult(_scan(AdapterScanResult.Empty()));
         }
+    }
+
+    private sealed class FakeProbe : IProcessSnapshotProvider
+    {
+        private readonly IReadOnlySet<string> _names;
+        private readonly bool _isComplete;
+
+        public FakeProbe(IEnumerable<string> processNames, bool isComplete = true)
+        {
+            _names = new HashSet<string>(processNames, StringComparer.OrdinalIgnoreCase);
+            _isComplete = isComplete;
+        }
+
+        public ProcessSnapshot GetSnapshot() => new(_names, _isComplete);
     }
 
     private sealed class InlineProgress : IProgress<ScanProgress>

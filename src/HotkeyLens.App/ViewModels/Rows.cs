@@ -1,4 +1,6 @@
+using HotkeyLens.Core.Analysis;
 using HotkeyLens.Core.Models;
+using HotkeyLens.Core.Presentation;
 
 namespace HotkeyLens.App.ViewModels;
 
@@ -60,7 +62,7 @@ public sealed class ShortcutRowViewModel
 
 public sealed class ParticipantRowViewModel
 {
-    public ParticipantRowViewModel(ConflictParticipant participant)
+    public ParticipantRowViewModel(ConflictParticipant participant, DiscoveredApplication? application = null)
     {
         ApplicationName = participant.ApplicationName;
         ActionName = participant.ActionName;
@@ -69,6 +71,19 @@ public sealed class ParticipantRowViewModel
         ConfidenceLabel = DisplayLabels.Confidence(participant.Confidence);
         SourceLabel = DisplayLabels.Source(participant.SourceKind);
         ContextText = string.IsNullOrWhiteSpace(participant.Context) ? "无特定上下文" : participant.Context;
+        IsRunning = participant.IsRunning;
+        DataSourceLabel = DisplayLabels.DataOrigin(participant.Origin);
+        Application = application;
+
+        ResolutionGuide = !string.IsNullOrWhiteSpace(participant.ResolutionGuide)
+            ? participant.ResolutionGuide
+            : !string.IsNullOrWhiteSpace(application?.ResolutionGuide)
+                ? application!.ResolutionGuide
+                : string.Empty;
+
+        Target = AuxiliaryTargetResolver.Resolve(application);
+        ActivationProcessName = application?.ProcessName ?? string.Empty;
+        ExecutablePath = application?.ExecutablePath ?? string.Empty;
     }
 
     public string ApplicationName { get; }
@@ -79,16 +94,42 @@ public sealed class ParticipantRowViewModel
     public string SourceLabel { get; }
     public string ContextText { get; }
 
+    public bool? IsRunning { get; }
+    public string RunningLabel => RuntimeStatePresentation.Label(IsRunning);
+    public bool IsDefinitelyRunning => IsRunning == true;
+    public string RunningHint => RuntimeStatePresentation.Hint(ApplicationName, IsRunning);
+
+    public string DataSourceLabel { get; }
+
+    public string ResolutionGuide { get; }
+    public bool HasResolutionGuide => !string.IsNullOrWhiteSpace(ResolutionGuide);
+
+    public DiscoveredApplication? Application { get; }
+    public AuxiliaryTarget Target { get; }
+    public string ActivationProcessName { get; }
+    public string ExecutablePath { get; }
+
+    public bool CanSwitch => IsRunning == true && !string.IsNullOrWhiteSpace(ActivationProcessName);
+    public bool CanReveal => Target.CanOpen;
+    public string RevealLabel => Target.Label;
+
     public override string ToString() => $"{ApplicationName}，{ActionName}，{ScopeLabel}";
 }
 
 public sealed class ConflictRowViewModel
 {
-    public ConflictRowViewModel(ShortcutConflict conflict)
+    public ConflictRowViewModel(
+        ShortcutConflict conflict,
+        IReadOnlyDictionary<string, DiscoveredApplication>? applicationsById = null)
     {
         Conflict = conflict;
         Participants = conflict.Participants
-            .Select(participant => new ParticipantRowViewModel(participant))
+            .Select(participant =>
+            {
+                DiscoveredApplication? application = null;
+                applicationsById?.TryGetValue(participant.ApplicationId, out application);
+                return new ParticipantRowViewModel(participant, application);
+            })
             .ToList();
     }
 
@@ -109,6 +150,14 @@ public sealed class ConflictRowViewModel
     public bool IsNormalDuplicate => Conflict.Classification == ConflictClassification.NormalDuplicate;
     public bool IsUnknown => Conflict.Classification == ConflictClassification.Unknown;
     public IReadOnlyList<ParticipantRowViewModel> Participants { get; }
+    public bool IsGlobalCompetition => Conflict.Kind == ConflictKind.GlobalHotkeyCompetition;
+    public bool HasResolutionGuides => Participants.Any(participant => participant.HasResolutionGuide);
+
+    public string RunningSummary => RuntimeStatePresentation.ParticipantsSummary(
+        Participants.Count(participant => participant.IsRunning == true),
+        Participants.Count(participant => participant.IsRunning is null),
+        Participants.Count);
+
     public string ApplicationCountText => $"{Participants.Select(participant => participant.ApplicationName).Distinct().Count()} 个应用";
     public string ParticipantCountText => Participants.Count == 1
         ? $"{ApplicationCountText} · 1 个功能"

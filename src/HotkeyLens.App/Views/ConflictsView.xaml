@@ -181,6 +181,68 @@
                                                     </ItemsControl>
                                                 </Border>
 
+                                                <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                                        BorderThickness="1" CornerRadius="9" Margin="0,10,0,0" Padding="12,10">
+                                                    <StackPanel>
+                                                        <DockPanel>
+                                                            <TextBlock Text="&#xE8F1;" FontFamily="{StaticResource IconFontFamily}" FontSize="12"
+                                                                       Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                                                            <TextBlock Text="一键辅助解决" FontSize="11" FontWeight="SemiBold" Margin="6,0,0,0"
+                                                                       Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                                                            <Border Style="{StaticResource BadgeBorder}" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding RunningSummary}" FontSize="9.5" />
+                                                            </Border>
+                                                        </DockPanel>
+
+                                                        <ItemsControl ItemsSource="{Binding Participants}" Margin="0,7,0,0">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Border Background="{DynamicResource SurfaceMutedBrush}" CornerRadius="7"
+                                                                            Padding="10,8" Margin="0,0,0,6">
+                                                                        <StackPanel>
+                                                                            <Grid>
+                                                                                <TextBlock Text="{Binding ApplicationName}" FontSize="11.5" FontWeight="SemiBold"
+                                                                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                                                    <Border Style="{StaticResource BadgeBorder}" Margin="0,0,6,0">
+                                                                                        <TextBlock Text="{Binding RunningLabel}" FontSize="9.5"
+                                                                                                   ToolTip="{Binding RunningHint}" />
+                                                                                    </Border>
+                                                                                    <Border Style="{StaticResource BadgeBorder}">
+                                                                                        <TextBlock Text="{Binding DataSourceLabel}" FontSize="9.5" />
+                                                                                    </Border>
+                                                                                </StackPanel>
+                                                                            </Grid>
+                                                                            <TextBlock Text="{Binding ResolutionGuide}" TextWrapping="Wrap" FontSize="11"
+                                                                                       LineHeight="17" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,0"
+                                                                                       Visibility="{Binding HasResolutionGuide, Converter={StaticResource BoolToVisibility}}" />
+                                                                            <TextBlock Text="{Binding RunningHint}" TextWrapping="Wrap" FontSize="10"
+                                                                                       Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,5,0,0"
+                                                                                       Visibility="{Binding CanSwitch, Converter={StaticResource BoolToVisibility}, ConverterParameter=invert}" />
+                                                                            <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                                                                                <Button Style="{StaticResource GhostButton}" Content="切换到该应用"
+                                                                                        Command="{Binding DataContext.ActivateApplicationCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                                                                        CommandParameter="{Binding}" ToolTip="{Binding RunningHint}"
+                                                                                        Padding="8,3" MinHeight="24" Margin="0,0,6,0" />
+                                                                                <Button Style="{StaticResource GhostButton}" Content="{Binding RevealLabel}"
+                                                                                        Command="{Binding DataContext.RevealParticipantPathCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                                                                        CommandParameter="{Binding}" ToolTip="{Binding Target.Message}"
+                                                                                        Padding="8,3" MinHeight="24" />
+                                                                            </StackPanel>
+                                                                        </StackPanel>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+
+                                                        <Button Style="{StaticResource GhostButton}" Content="复检此冲突"
+                                                                Command="{Binding DataContext.RecheckConflictCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                                                CommandParameter="{Binding}" HorizontalAlignment="Left" Margin="0,2,0,0"
+                                                                Padding="8,3" MinHeight="24"
+                                                                ToolTip="在软件里改完快捷键后点这里：重新扫描并确认冲突是否已解决" />
+                                                    </StackPanel>
+                                                </Border>
+
                                                 <TextBlock Text="判断依据" Style="{StaticResource FieldLabel}" Margin="0,10,0,0" />
                                                 <TextBlock Text="{Binding Rationale}" TextWrapping="Wrap" FontSize="11"
                                                            LineHeight="17" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3,0,0" />

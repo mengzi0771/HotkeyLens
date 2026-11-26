@@ -79,6 +79,13 @@ public sealed record CatalogApplicationDefinition
     public string AppliesTo { get; init; } = string.Empty;
     public string LastReviewed { get; init; } = string.Empty;
     public string SettingsHint { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Plain-language, menu-level instructions for changing or disabling this
+    /// application's global hotkeys. Written for non-technical users.
+    /// </summary>
+    public string ResolutionGuide { get; init; } = string.Empty;
+
     public IReadOnlyList<CatalogShortcutDefinition> Shortcuts { get; init; } = Array.Empty<CatalogShortcutDefinition>();
 }
 

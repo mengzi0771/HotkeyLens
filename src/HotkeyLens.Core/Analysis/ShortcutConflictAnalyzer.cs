@@ -13,7 +13,9 @@ namespace HotkeyLens.Core.Analysis;
 /// </summary>
 public static class ShortcutConflictAnalyzer
 {
-    public static IReadOnlyList<ShortcutConflict> Analyze(IReadOnlyList<ShortcutEntry> shortcuts)
+    public static IReadOnlyList<ShortcutConflict> Analyze(
+        IReadOnlyList<ShortcutEntry> shortcuts,
+        IReadOnlyDictionary<string, bool?>? runningApplications = null)
     {
         var groups = shortcuts
             .Where(shortcut => shortcut.IsEnabled && !shortcut.IsSequence)
@@ -32,7 +34,7 @@ public static class ShortcutConflictAnalyzer
 
             if (entries.Select(entry => entry.ApplicationId).Distinct(StringComparer.Ordinal).Count() > 1)
             {
-                findings.Add(BuildCrossApplicationFinding(entries));
+                findings.Add(BuildCrossApplicationFinding(entries, runningApplications));
             }
         }
 
@@ -85,7 +87,7 @@ public static class ShortcutConflictAnalyzer
         }
 
         var participants = involved.Values
-            .Select(ToParticipant)
+            .Select(entry => ToParticipant(entry))
             .OrderBy(participant => participant.ActionName, StringComparer.CurrentCultureIgnoreCase)
             .ThenBy(participant => participant.ShortcutId, StringComparer.Ordinal)
             .ToList();
@@ -141,13 +143,15 @@ public static class ShortcutConflictAnalyzer
             recommendation));
     }
 
-    private static ShortcutConflict BuildCrossApplicationFinding(IReadOnlyList<ShortcutEntry> entries)
+    private static ShortcutConflict BuildCrossApplicationFinding(
+        IReadOnlyList<ShortcutEntry> entries,
+        IReadOnlyDictionary<string, bool?>? runningApplications)
     {
         var byApplication = entries
             .GroupBy(entry => entry.ApplicationId, StringComparer.Ordinal)
             .ToList();
         var participants = byApplication
-            .Select(group => SelectParticipant(group.ToList()))
+            .Select(group => SelectParticipant(group.ToList(), runningApplications))
             .OrderBy(participant => participant.ApplicationName, StringComparer.CurrentCultureIgnoreCase)
             .ThenBy(participant => participant.ApplicationId, StringComparer.Ordinal)
             .ToList();
@@ -180,6 +184,44 @@ public static class ShortcutConflictAnalyzer
                 "至少两个应用的快捷方式 .lnk 热键字段指向同一组合。Windows 的全局热键注册由先注册者取得，后注册者可能失败；这证明存在登记竞争，不代表两个功能当前都实际可用。",
                 ConfidenceLevel.High,
                 "打开涉及的快捷方式属性或应用设置，保留真正需要的全局热键，修改另一个。HotkeyLens 不会自动改写第三方应用配置。");
+        }
+
+        var allGlobal = byApplication.All(group => group.All(entry => entry.Scope == ShortcutScope.Global));
+        if (registeredApplications.Count == 0 && allGlobal)
+        {
+            var states = runningApplications is null
+                ? null
+                : participants
+                    .Select(participant => runningApplications.TryGetValue(participant.ApplicationId, out var isRunning)
+                        ? (bool?)isRunning
+                        : null)
+                    .ToList();
+            var allKnown = states is not null && states.All(state => state.HasValue);
+            var allRunning = allKnown && states!.All(state => state == true);
+            var someRunning = states is not null && states.Any(state => state == true);
+
+            var summary = allRunning
+                ? $"{gesture.Canonical} 被 {names} 同时用作全局热键，涉及软件当前都在运行，按下时可能被先启动的软件抢占。"
+                : !allKnown
+                    ? $"{gesture.Canonical} 被 {names} 同时用作全局热键，但本次扫描没有采集到全部运行状态，无法判断当前是否会竞争。"
+                    : someRunning
+                        ? $"{gesture.Canonical} 被 {names} 同时用作全局热键，但至少一款当前未检测到运行，仅在同时开启时才可能竞争。"
+                        : $"{gesture.Canonical} 被 {names} 同时用作全局热键，但涉及软件当前均未检测到运行，仅在同时开启时才可能竞争。";
+
+            var rationale = allRunning
+                ? "这些记录都把同一组合声明为全局（不限于窗口内）热键，且扫描时相关进程都在运行。Windows 的全局热键由先注册者取得，后注册者通常收不到按键，因此存在真实的按键竞争；这里仍标为「潜在冲突」，因为系统没有公开 API 能枚举全部已注册的全局热键。"
+                : "这些记录都把同一组合声明为全局（不限于窗口内）热键。扫描时至少一款软件没有检测到运行（可能已关闭，或被安全软件隐藏了进程）或运行状态未知，目前不一定发生抢占；只有相关软件同时开启时才可能竞争，因此降低显著度以避免日常误报。";
+
+            return CreateConflict(
+                gesture,
+                ConflictKind.GlobalHotkeyCompetition,
+                ConflictClassification.PotentialConflict,
+                allRunning ? ConflictSeverity.Medium : ConflictSeverity.Low,
+                participants,
+                summary,
+                rationale,
+                ConfidenceLevel.Medium,
+                "在其中一个软件的「设置 → 快捷键」里更换组合或关闭全局热键；改完后在冲突卡片上点「复检此冲突」确认是否已解决。HotkeyLens 不会修改第三方配置。");
         }
 
         if (globalApplications.Count > 0)
@@ -277,7 +319,9 @@ public static class ShortcutConflictAnalyzer
         };
     }
 
-    private static ConflictParticipant SelectParticipant(IReadOnlyList<ShortcutEntry> entries)
+    private static ConflictParticipant SelectParticipant(
+        IReadOnlyList<ShortcutEntry> entries,
+        IReadOnlyDictionary<string, bool?>? runningApplications)
     {
         var selected = entries
             .OrderByDescending(IsGlobalRegistrationEvidence)
@@ -288,21 +332,35 @@ public static class ShortcutConflictAnalyzer
             .ThenBy(entry => entry.ActionName, StringComparer.CurrentCultureIgnoreCase)
             .First();
 
-        return ToParticipant(selected);
+        return ToParticipant(selected, runningApplications);
     }
 
-    private static ConflictParticipant ToParticipant(ShortcutEntry entry) => new()
+    private static ConflictParticipant ToParticipant(
+        ShortcutEntry entry,
+        IReadOnlyDictionary<string, bool?>? runningApplications = null)
     {
-        ShortcutId = entry.Id,
-        ApplicationId = entry.ApplicationId,
-        ApplicationName = entry.ApplicationName,
-        ActionName = entry.ActionName,
-        Scope = entry.Scope,
-        SourceKind = entry.SourceKind,
-        Origin = entry.Origin,
-        Confidence = entry.Confidence,
-        Context = entry.Context
-    };
+        bool? isRunning = null;
+        if (runningApplications is not null &&
+            runningApplications.TryGetValue(entry.ApplicationId, out var running))
+        {
+            isRunning = running;
+        }
+
+        return new ConflictParticipant
+        {
+            ShortcutId = entry.Id,
+            ApplicationId = entry.ApplicationId,
+            ApplicationName = entry.ApplicationName,
+            ActionName = entry.ActionName,
+            Scope = entry.Scope,
+            SourceKind = entry.SourceKind,
+            Origin = entry.Origin,
+            Confidence = entry.Confidence,
+            Context = entry.Context,
+            IsRunning = isRunning,
+            ResolutionGuide = entry.ResolutionGuide
+        };
+    }
 
     private static bool IsGlobalRegistrationEvidence(ShortcutEntry entry)
         => entry.Scope == ShortcutScope.Global &&

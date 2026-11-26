@@ -27,6 +27,7 @@ public sealed class MainViewModel : ObservableObject
     private UserPreferences _preferences = new();
     private CancellationTokenSource? _scanCancellation;
     private bool _suppressFilters;
+    private ShortcutConflict? _pendingRecheckConflict;
 
     private NavItem _selectedNav;
     private OptionItem _selectedShortcutScope;
@@ -39,6 +40,7 @@ public sealed class MainViewModel : ObservableObject
     private string _shortcutSearchText = string.Empty;
     private string _applicationSearchText = string.Empty;
     private bool _onlyConflicting;
+    private bool _onlyImportantShortcuts = true;
     private bool _groupShortcutsByApplication;
     private ShortcutRowViewModel? _selectedShortcut;
     private ApplicationRowViewModel? _selectedApplication;
@@ -148,6 +150,9 @@ public sealed class MainViewModel : ObservableObject
         CloseApplicationDetailsCommand = new RelayCommand(() => SelectedApplication = null, () => SelectedApplication is not null);
         DismissErrorCommand = new RelayCommand(() => ErrorMessage = string.Empty);
         RefreshDataCommand = new RelayCommand(RefreshFilterViews);
+        ActivateApplicationCommand = new RelayCommand(ActivateApplication, parameter => parameter is ParticipantRowViewModel { CanSwitch: true });
+        RevealParticipantPathCommand = new RelayCommand(RevealParticipantPath, parameter => parameter is ParticipantRowViewModel { CanReveal: true });
+        RecheckConflictCommand = new AsyncRelayCommand<ConflictRowViewModel>(RecheckConflictAsync, _ => !IsScanning);
     }
 
     public IReadOnlyList<NavItem> NavItems { get; }
@@ -183,6 +188,9 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand CloseApplicationDetailsCommand { get; }
     public RelayCommand DismissErrorCommand { get; }
     public RelayCommand RefreshDataCommand { get; }
+    public RelayCommand ActivateApplicationCommand { get; }
+    public RelayCommand RevealParticipantPathCommand { get; }
+    public AsyncRelayCommand<ConflictRowViewModel> RecheckConflictCommand { get; }
 
     public NavItem SelectedNav
     {
@@ -349,6 +357,22 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Default view keeps the noise out: only global hotkeys and Windows shell
+    /// keys are listed until the user explicitly asks for everything.
+    /// </summary>
+    public bool OnlyImportantShortcuts
+    {
+        get => _onlyImportantShortcuts;
+        set
+        {
+            if (SetProperty(ref _onlyImportantShortcuts, value))
+            {
+                ApplyShortcutFilters();
+            }
+        }
+    }
+
     public bool GroupShortcutsByApplication
     {
         get => _groupShortcutsByApplication;
@@ -415,6 +439,7 @@ public sealed class MainViewModel : ObservableObject
                     nameof(CanNavigateToDashboard));
                 ScanCommand.RaiseCanExecuteChanged();
                 CancelScanCommand.RaiseCanExecuteChanged();
+                RecheckConflictCommand?.RaiseCanExecuteChanged();
             }
         }
     }
@@ -491,6 +516,9 @@ public sealed class MainViewModel : ObservableObject
     public int UserConfiguredShortcuts => _snapshot.Statistics.UserConfiguredShortcuts;
     public int DocumentedDefaultShortcuts => _snapshot.Statistics.DocumentedDefaultShortcuts;
     public int RuntimeObservedShortcuts => _snapshot.Statistics.RuntimeObservedShortcuts;
+    public int GlobalShortcuts => _snapshot.Statistics.GlobalShortcuts;
+    public int GlobalShortcutsFromRunningApplications => _snapshot.Statistics.GlobalShortcutsFromRunningApplications;
+    public int RunningApplications => _snapshot.Statistics.RunningApplications;
     public int ScannedApplications => _snapshot.Statistics.ScannedApplications;
     public int NotScannableApplications => _snapshot.Statistics.NotScannableApplications;
     public int NoShortcutsApplications => _snapshot.Statistics.NoShortcutsApplications;
@@ -507,7 +535,9 @@ public sealed class MainViewModel : ObservableObject
         : "等待第一次扫描";
     public string OriginSummary =>
         $"{UserConfiguredShortcuts} 条用户配置 · {DocumentedDefaultShortcuts} 条官方默认 · {RuntimeObservedShortcuts} 条运行时观察";
-    public string ShortcutFilterSummary => $"{FilteredShortcuts.Count} / {TotalShortcuts} 条";
+    public string ShortcutFilterSummary => OnlyImportantShortcuts
+        ? $"{FilteredShortcuts.Count} 条重点热键 / 全部 {TotalShortcuts} 条"
+        : $"{FilteredShortcuts.Count} / {TotalShortcuts} 条";
     public string ApplicationFilterSummary => $"{FilteredApplications.Count} / {TotalApplications} 个";
     public string ConflictFilterSummary => $"{FilteredConflicts.Count} / {_allConflictRows.Count} 组";
     public string DataLocation => _dataDirectory;
@@ -607,18 +637,23 @@ public sealed class MainViewModel : ObservableObject
             ScanPercent = 100;
             ScanMessage = $"扫描完成：{snapshot.Statistics.TotalShortcuts} 条快捷键，{snapshot.Statistics.ConfirmedConflicts} 组确认冲突，{snapshot.Statistics.PotentialConflicts} 组潜在冲突，{snapshot.Statistics.NormalDuplicates} 组正常重复。";
             StatusMessage = $"扫描完成 · {LastScanText}";
+            CompletePendingRecheck();
         }
         catch (OperationCanceledException)
         {
             ScanPhase = "已取消";
             ScanMessage = "扫描已取消，原有结果保持不变。";
-            StatusMessage = "扫描已取消";
+            StatusMessage = _pendingRecheckConflict is null
+                ? "扫描已取消"
+                : "复检已取消，原有结果保持不变。";
+            _pendingRecheckConflict = null;
         }
         catch (Exception exception)
         {
             ScanPhase = "扫描失败";
             ScanMessage = "扫描没有完成，请查看错误详情。";
             ErrorMessage = $"扫描失败：{exception.Message}";
+            _pendingRecheckConflict = null;
         }
         finally
         {
@@ -673,8 +708,12 @@ public sealed class MainViewModel : ObservableObject
             _categoriesByApplication[application.Id] = application.Category;
         }
 
+        var applicationsById = snapshot.Applications
+            .GroupBy(application => application.Id, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+
         var conflictRows = snapshot.Conflicts
-            .Select(conflict => new ConflictRowViewModel(conflict))
+            .Select(conflict => new ConflictRowViewModel(conflict, applicationsById))
             .ToList();
         foreach (var conflict in snapshot.Conflicts)
         {
@@ -748,6 +787,9 @@ public sealed class MainViewModel : ObservableObject
             nameof(UserConfiguredShortcuts),
             nameof(DocumentedDefaultShortcuts),
             nameof(RuntimeObservedShortcuts),
+            nameof(GlobalShortcuts),
+            nameof(GlobalShortcutsFromRunningApplications),
+            nameof(RunningApplications),
             nameof(ScannedApplications),
             nameof(NotScannableApplications),
             nameof(NoShortcutsApplications),
@@ -806,6 +848,9 @@ public sealed class MainViewModel : ObservableObject
             nameof(UserConfiguredShortcuts),
             nameof(DocumentedDefaultShortcuts),
             nameof(RuntimeObservedShortcuts),
+            nameof(GlobalShortcuts),
+            nameof(GlobalShortcutsFromRunningApplications),
+            nameof(RunningApplications),
             nameof(ScannedApplications),
             nameof(NotScannableApplications),
             nameof(NoShortcutsApplications),
@@ -833,6 +878,7 @@ public sealed class MainViewModel : ObservableObject
             MinimumConfidence = ParseEnum<ConfidenceLevel>(SelectedShortcutConfidence.Value),
             Category = ParseEnum<ApplicationCategory>(SelectedShortcutCategory.Value),
             OnlyConflicting = OnlyConflicting,
+            ImportantOnly = OnlyImportantShortcuts,
             SortBy = ParseEnum<ShortcutSortField>(SelectedShortcutSort.Value) ?? ShortcutSortField.Gesture
         };
 
@@ -955,6 +1001,7 @@ public sealed class MainViewModel : ObservableObject
         _suppressFilters = true;
         ShortcutSearchText = string.Empty;
         OnlyConflicting = false;
+        OnlyImportantShortcuts = true;
         SelectedShortcutScope = ShortcutScopeOptions[0];
         SelectedShortcutSource = ShortcutSourceOptions[0];
         SelectedShortcutConfidence = ShortcutConfidenceOptions[0];
@@ -1052,6 +1099,92 @@ public sealed class MainViewModel : ObservableObject
             $"{application.Name} · 快捷键设置指引",
             MessageBoxButton.OK,
             MessageBoxImage.Information);
+    }
+
+    private void ActivateApplication(object? parameter)
+    {
+        if (parameter is not ParticipantRowViewModel participant)
+        {
+            return;
+        }
+
+        if (!participant.CanSwitch)
+        {
+            StatusMessage = participant.RunningHint;
+            return;
+        }
+
+        if (WindowActivationService.TryActivate(participant.ActivationProcessName, out var error))
+        {
+            StatusMessage = $"已切换到 {participant.ApplicationName}，可以在它的设置里修改快捷键。";
+            return;
+        }
+
+        ErrorMessage = error;
+    }
+
+    private void RevealParticipantPath(object? parameter)
+    {
+        if (parameter is not ParticipantRowViewModel participant)
+        {
+            return;
+        }
+
+        if (!participant.CanReveal)
+        {
+            ErrorMessage = participant.Target.Message;
+            return;
+        }
+
+        if (FileActionService.TryReveal(participant.Target.Path, out var error))
+        {
+            StatusMessage = participant.Target.Message;
+            return;
+        }
+
+        ErrorMessage = error;
+    }
+
+    private async Task RecheckConflictAsync(ConflictRowViewModel? conflictRow)
+    {
+        if (conflictRow is null || IsScanning)
+        {
+            return;
+        }
+
+        _pendingRecheckConflict = conflictRow.Conflict;
+        StatusMessage = $"正在重新扫描，以复检 {conflictRow.GestureText} …";
+        await ScanAsync();
+    }
+
+    /// <summary>
+    /// Finishes a user-triggered recheck: says whether the gesture still
+    /// produces a conflict after the rescan, so the loop "find → fix → verify"
+    /// is visible instead of silent.
+    /// </summary>
+    private void CompletePendingRecheck()
+    {
+        var pending = _pendingRecheckConflict;
+        _pendingRecheckConflict = null;
+        if (pending is null)
+        {
+            return;
+        }
+
+        var gesture = pending.Gesture.Display;
+        var remaining = _snapshot.Conflicts
+            .Where(conflict => string.Equals(
+                conflict.Gesture.Canonical,
+                pending.Gesture.Canonical,
+                StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var stillConflicting = remaining.Any(conflict => conflict.CountsAsConflict);
+
+        SelectedConflictFilter = ConflictFilterOptions[0];
+        SelectedNav = NavItems.First(item => item.Page == PageKind.Conflicts);
+        StatusMessage = stillConflicting
+            ? $"复检完成：{gesture} 仍然存在冲突，共 {remaining.Count} 条相关分析。按指引修改后可以再次复检。"
+            : $"复检完成：{gesture} 已不再构成冲突，看来已经解决了。";
     }
 
     private void ShowConflictShortcuts(object? parameter)

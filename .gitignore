@@ -51,3 +51,5 @@ Desktop.ini
 # Screenshot staging (published screenshots live in docs/screenshots)
 screenshots/tmp/
 shots/
+# WPF temporary project files generated during build
+*_wpftmp.csproj

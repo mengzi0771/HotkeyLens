@@ -65,6 +65,10 @@
                         <CheckBox Style="{StaticResource SwitchCheckBox}" IsChecked="{Binding OnlyConflicting}"
                                   ToolTip="只显示参与重复或潜在冲突分析的快捷键" />
 
+                        <TextBlock Text="只看重点热键" Style="{StaticResource FieldLabel}" VerticalAlignment="Center" Margin="18,0,7,0" />
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" IsChecked="{Binding OnlyImportantShortcuts}"
+                                  ToolTip="默认只显示全局（跨软件生效）热键和 Windows 系统常用热键；关闭后显示软件内部的全部快捷键" />
+
                         <TextBlock Text="按软件分组" Style="{StaticResource FieldLabel}" VerticalAlignment="Center" Margin="18,0,7,0" />
                         <CheckBox Style="{StaticResource SwitchCheckBox}" IsChecked="{Binding GroupShortcutsByApplication}"
                                   ToolTip="按应用程序分组展示快捷键" />

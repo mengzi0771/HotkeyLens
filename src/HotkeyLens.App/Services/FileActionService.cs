@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Security;
+using HotkeyLens.Core.Presentation;
 using Microsoft.Win32;
 
 namespace HotkeyLens.App.Services;
@@ -48,12 +49,12 @@ public static class FileActionService
 
         if (File.Exists(path))
         {
-            return TryStart("explorer.exe", $"/select,\"{path}\"", out error);
+            return TryStartVerified($"/select,\"{path}\"", path, out error);
         }
 
         if (Directory.Exists(path))
         {
-            return TryStart(path, string.Empty, out error);
+            return TryStartVerified($"\"{path}\"", path, out error);
         }
 
         error = "目标文件或文件夹不存在，可能已被移动。";
@@ -77,6 +78,54 @@ public static class FileActionService
         catch (Exception exception) when (exception is InvalidOperationException or System.ComponentModel.Win32Exception)
         {
             error = exception.Message;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// explorer.exe hands the request to the running shell and usually exits with
+    /// code 1. A negative (NTSTATUS) code means the process failed to start
+    /// (for example 0xC0000142 under a restricted session), so the caller must not
+    /// claim the folder was revealed.
+    /// </summary>
+    private static bool TryStartVerified(string arguments, string targetPath, out string error)
+    {
+        error = string.Empty;
+        try
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+                    "explorer.exe"),
+                Arguments = arguments,
+                // Launch explorer directly (not through ShellExecute) so a crashed
+                // or blocked helper process is observable through its exit code.
+                UseShellExecute = false
+            };
+
+            using var process = Process.Start(startInfo);
+            if (process is null)
+            {
+                return true;
+            }
+
+            if (!process.WaitForExit(milliseconds: 900))
+            {
+                return true;
+            }
+
+            if (RevealFeedback.IsFailedExitCode(process.ExitCode))
+            {
+                error = RevealFeedback.Failure(targetPath, process.ExitCode);
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            error = RevealFeedback.Failure(targetPath, null);
             return false;
         }
     }

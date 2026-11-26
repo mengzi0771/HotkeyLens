@@ -8,6 +8,15 @@ HotkeyLens is an on-demand Windows desktop tool for discovering installed applic
 
 It does not run in the background, does not continuously monitor the keyboard, and does not fabricate scan results. Scan data stays on your machine; the only optional network request is the update check described below.
 
+## What's new in 1.2.0
+
+- **Everyday global-hotkey check-up:** curated official global hotkeys plus plain-language "how to change it" guides for NetEase Cloud Music, QQ Music, WeChat, QQ and Snipaste. WeChat is matched by both `WeChat.exe` and the 4.x `Weixin.exe`.
+- **Read-only configuration readers (first batch):** Chrome/Edge extension shortcuts stored in profile `Preferences` (both the classic nested and the newer flat `extensions.commands` shapes) and Snipaste's `config.ini`. Missing, locked or malformed files fall back to documented defaults with an explicit diagnostic — never presented as a user configuration.
+- **Runtime-aware conflict grading:** when both applications that declare the same global hotkey are running, the finding becomes a medium-severity "global hotkey competition" with a plain-language warning about the first-registered app winning. When at least one is not running it drops to low severity and says competition only exists while both are open. If the process table is filtered by security software, unmatched applications become "unknown" instead of being claimed as closed; visible top-level windows are used as a read-only fallback to find apps such as WeChat and NetEase Cloud Music that protect their main process.
+- **Less noise by default:** the Shortcuts page now shows only global and Windows shell hotkeys until "只看重点热键" is switched off (27 of 235 on the development machine).
+- **One-click assisted resolution:** each conflict card shows both apps' running state and evidence source, with "switch to this app", "open folder / configuration file" and "recheck this conflict" actions that close the find → go fix → verify loop using only read-only reads and standard window calls. A failed explorer launch now reports the error code and target path instead of claiming the folder was revealed.
+- **Verification:** 162 automated tests pass, including new cases for Chromium `Preferences`, Snipaste `config.ini`, runtime conflict grading, filtered-process-table degradation, runtime wording, explorer launch failure feedback, default focus filtering and auxiliary path validation.
+
 ## What's new in 1.1.1
 
 - **Microsoft Edge identity:** versioned `Application\<version>\msedge.exe` paths are normalized to the installation root, while Stable, Beta, Dev and Canary installations remain separate. Edge no longer appears twice in a scan or conflict participant list.
@@ -15,9 +24,9 @@ It does not run in the background, does not continuously monitor the keyboard, a
 - **Safer upgrades:** before starting the installer, HotkeyLens verifies that the installation directory is writable and reports a clear message if security software blocks the replacement. The installer also performs its own write check and restricts its close-application handling to `HotkeyLens.exe`. The app never disables security software and never runs a silent upgrade.
 - **Validation:** 108 automated tests pass; a real local scan now finds one Edge entry and 16 Windows Terminal bindings (12 documented defaults, 4 user-configured).
 
-The screenshots in this README were captured for 1.1.0. The 1.1.1 fixes change discovery and upgrade behavior, not the page layout, and the screenshots were not recaptured.
+The screenshots in this README were captured for 1.2.0 in the dark theme. 1.2.0 adds runtime state, one-click assisted resolution and a lower-noise default view, so the layout and information density changed and the screenshots were recaptured.
 
-![HotkeyLens dashboard in the light theme](docs/screenshots/dashboard-light.png)
+![HotkeyLens dashboard in the dark theme](docs/screenshots/dashboard-dark.png)
 
 ## Contents
 
@@ -215,9 +224,13 @@ Five pages share one view model and scan snapshot:
 
 Themes are provided by shared resource dictionaries. Changing a theme applies immediately across the whole window and is saved automatically; no restart is required. The light theme uses a white sidebar, a light-gray workspace, and white cards. The dark theme uses neutral charcoal panels, dark-gray cards, and a single blue accent.
 
-| Shortcuts (light) | Applications (dark) | Settings (dark) |
+| Shortcuts (dark, important only by default) | Applications (dark) | Settings (dark) |
 |---|---|---|
-| ![Shortcut list](docs/screenshots/shortcuts-light.png) | ![Applications](docs/screenshots/applications-dark.png) | ![Settings](docs/screenshots/settings-dark.png) |
+| ![Shortcut list](docs/screenshots/shortcuts-dark.png) | ![Applications](docs/screenshots/applications-dark.png) | ![Settings](docs/screenshots/settings-dark.png) |
+
+The conflict card shows both sides' runtime state, evidence source and plain-language steps, plus three assisted actions: switch to the application, open its folder or configuration file, and recheck the conflict:
+
+![Conflict card and assisted resolution](docs/screenshots/conflicts-dark.png)
 
 ## Architecture
 

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using HotkeyLens.Core.Abstractions;
+using HotkeyLens.Core.Catalog;
 using HotkeyLens.Core.Models;
 using Microsoft.Win32;
 
@@ -42,6 +43,8 @@ public sealed class ApplicationDiscoveryService : IApplicationDiscoveryService
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+        AddWellKnownCandidates(candidates);
+        cancellationToken.ThrowIfCancellationRequested();
         AddRegistryCandidates(candidates, diagnostics, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         AddAppPathCandidates(candidates, diagnostics, cancellationToken);
@@ -49,7 +52,7 @@ public sealed class ApplicationDiscoveryService : IApplicationDiscoveryService
         AddStartMenuCandidates(candidates, diagnostics, cancellationToken);
 
         var merged = ApplicationMerger.Merge(candidates)
-            .Select(ApplicationSettingsEnricher.Enrich)
+            .Select(app => ApplicationSettingsEnricher.Enrich(app, ShortcutCatalog.Default))
             .Where(app => !ShouldExclude(app, options))
             .ToList();
 
@@ -92,6 +95,26 @@ public sealed class ApplicationDiscoveryService : IApplicationDiscoveryService
             SourceDetail = "Windows 内置",
             IsSystemComponent = true
         });
+    }
+
+    private static void AddWellKnownCandidates(List<ApplicationCandidate> candidates)
+    {
+        foreach (var (profile, executable) in WellKnownApplications.FindInstallations())
+        {
+            var info = TryGetVersionInfo(executable);
+            candidates.Add(new ApplicationCandidate
+            {
+                Name = profile.Name,
+                ExecutablePath = executable,
+                IconPath = executable,
+                InstallLocation = Path.GetDirectoryName(executable),
+                Version = info?.ProductVersion ?? info?.FileVersion ?? GetFileVersion(executable),
+                Publisher = info?.CompanyName,
+                Category = profile.Category,
+                SourceKind = ApplicationSourceKind.KnownLocation,
+                SourceDetail = "常见安装位置（只读检测）"
+            });
+        }
     }
 
     private static void AddRegistryCandidates(

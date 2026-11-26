@@ -105,6 +105,7 @@ public sealed class ShortcutFileAdapter : IShortcutSourceAdapter
                 Origin = ShortcutOrigin.UserConfigured,
                 Context = $"开始菜单/桌面快捷方式：{linkName}",
                 RawValue = $"{gesture.Canonical} (VK {gesture.VirtualKey})",
+                ResolutionGuide = application.ResolutionGuide,
                 CapturedAt = context.StartedAt
             });
             result.CoveredApplicationIds.Add(application.Id);

@@ -1,3 +1,4 @@
+using HotkeyLens.Core.Catalog;
 using HotkeyLens.Core.Models;
 
 namespace HotkeyLens.Core.Discovery;
@@ -7,7 +8,9 @@ public enum ConfigurationFormat
     VisualStudioCode,
     WindowsTerminal,
     JetBrainsKeymap,
-    NotepadPlusPlusShortcuts
+    NotepadPlusPlusShortcuts,
+    ChromiumPreferences,
+    SnipasteConfig
 }
 
 public sealed record ConfigurationFileDescriptor
@@ -88,6 +91,8 @@ public static class KnownConfigurationLocations
         }
 
         result.AddRange(GetJetBrainsKeymapFiles());
+        result.AddRange(GetChromiumPreferenceFiles());
+        result.AddRange(GetSnipasteConfigurationFiles());
 
         var notepadPlusPlusSettings = Path.Combine(appData, "Notepad++", "shortcuts.xml");
         if (File.Exists(notepadPlusPlusSettings))
@@ -139,6 +144,22 @@ public static class KnownConfigurationLocations
             return Path.Combine(appData, "Notepad++", "shortcuts.xml");
         }
 
+        if (processName.Equals("chrome.exe", StringComparison.OrdinalIgnoreCase) ||
+            processName.Equals("msedge.exe", StringComparison.OrdinalIgnoreCase))
+        {
+            var product = processName.Equals("chrome.exe", StringComparison.OrdinalIgnoreCase)
+                ? "Google Chrome"
+                : "Microsoft Edge";
+            return GetChromiumPreferenceFiles()
+                .FirstOrDefault(file => string.Equals(file.ProductName, product, StringComparison.OrdinalIgnoreCase))
+                ?.FilePath;
+        }
+
+        if (processName.Equals("Snipaste.exe", StringComparison.OrdinalIgnoreCase))
+        {
+            return GetSnipasteConfigurationFiles().FirstOrDefault()?.FilePath;
+        }
+
         var jetBrains = GetJetBrainsKeymapFiles()
             .FirstOrDefault(file => string.Equals(file.ProcessName, processName, StringComparison.OrdinalIgnoreCase));
         if (jetBrains is not null)
@@ -174,6 +195,17 @@ public static class KnownConfigurationLocations
             return "Notepad++ 快捷键配置（HotkeyLens 仅定位，不自动改写）";
         }
 
+        if (processName.Equals("chrome.exe", StringComparison.OrdinalIgnoreCase) ||
+            processName.Equals("msedge.exe", StringComparison.OrdinalIgnoreCase))
+        {
+            return "浏览器扩展快捷键保存在 Preferences 中（只读扫描）；修改请在 chrome://extensions/shortcuts 或 edge://extensions/shortcuts 完成。";
+        }
+
+        if (processName.Equals("Snipaste.exe", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Snipaste 热键配置（只读扫描）；修改请在 Snipaste 首选项 →「控制」中完成。";
+        }
+
         if (JetBrainsProducts.Any(product =>
                 string.Equals(product.ProcessName, processName, StringComparison.OrdinalIgnoreCase)))
         {
@@ -181,6 +213,102 @@ public static class KnownConfigurationLocations
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Locates the read-only Chromium Preferences file of every signed-in
+    /// browser profile. Only stable channels are inspected; nothing is written.
+    /// </summary>
+    public static IReadOnlyList<ConfigurationFileDescriptor> GetChromiumPreferenceFiles()
+    {
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var browsers = new[]
+        {
+            (ProcessName: "chrome.exe", ProductName: "Google Chrome", RelativeUserData: Path.Combine("Google", "Chrome", "User Data")),
+            (ProcessName: "msedge.exe", ProductName: "Microsoft Edge", RelativeUserData: Path.Combine("Microsoft", "Edge", "User Data"))
+        };
+
+        var result = new List<ConfigurationFileDescriptor>();
+        foreach (var browser in browsers)
+        {
+            var userData = Path.Combine(localAppData, browser.RelativeUserData);
+            if (!Directory.Exists(userData))
+            {
+                continue;
+            }
+
+            foreach (var profileDirectory in EnumerateProfileDirectories(userData))
+            {
+                var preferences = Path.Combine(profileDirectory, "Preferences");
+                if (!File.Exists(preferences))
+                {
+                    continue;
+                }
+
+                var profileName = Path.GetFileName(profileDirectory);
+                result.Add(new ConfigurationFileDescriptor
+                {
+                    Format = ConfigurationFormat.ChromiumPreferences,
+                    ProcessName = browser.ProcessName,
+                    ProductName = browser.ProductName,
+                    FilePath = preferences,
+                    Description = $"{browser.ProductName} · {profileName} 配置文件的扩展快捷键（Preferences）",
+                    SettingsHint = "浏览器扩展快捷键保存在 Preferences 中；HotkeyLens 只读解析，修改请在浏览器内完成。"
+                });
+            }
+        }
+
+        return result;
+    }
+
+    public static IReadOnlyList<ConfigurationFileDescriptor> GetSnipasteConfigurationFiles()
+    {
+        var candidates = new[]
+        {
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Snipaste", "config.ini"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Snipaste", "config.ini")
+        };
+
+        var result = new List<ConfigurationFileDescriptor>();
+        foreach (var path in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+
+            result.Add(new ConfigurationFileDescriptor
+            {
+                Format = ConfigurationFormat.SnipasteConfig,
+                ProcessName = "Snipaste.exe",
+                ProductName = "Snipaste",
+                FilePath = path,
+                Description = "Snipaste 用户 config.ini",
+                SettingsHint = "Snipaste 热键保存在 config.ini 中；HotkeyLens 只读解析，修改请在首选项里完成。"
+            });
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyList<string> EnumerateProfileDirectories(string userData)
+    {
+        try
+        {
+            return Directory.EnumerateDirectories(userData)
+                .Where(path =>
+                {
+                    var name = Path.GetFileName(path);
+                    return string.Equals(name, "Default", StringComparison.OrdinalIgnoreCase) ||
+                           name.StartsWith("Profile ", StringComparison.OrdinalIgnoreCase);
+                })
+                .OrderBy(path => Path.GetFileName(path), StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch (Exception exception) when (exception is UnauthorizedAccessException or IOException)
+        {
+            return [];
+        }
     }
 
     private static IEnumerable<string> FindWindowsTerminalSettings()
@@ -283,17 +411,52 @@ public static class KnownConfigurationLocations
 
 public static class ApplicationSettingsEnricher
 {
-    public static DiscoveredApplication Enrich(DiscoveredApplication application)
+    /// <summary>
+    /// Fills settings locations and plain-language resolution guidance from the
+    /// local read-only signals and the curated catalog. Unknown values stay
+    /// empty instead of being guessed.
+    /// </summary>
+    public static DiscoveredApplication Enrich(
+        DiscoveredApplication application,
+        ShortcutCatalog? catalog = null)
     {
-        if (!string.IsNullOrWhiteSpace(application.SettingsPath))
-        {
-            return application;
-        }
+        var profile = WellKnownApplications.Match(application.ProcessName);
+        var catalogApplication = catalog is null
+            ? null
+            : catalog.Match(application).FirstOrDefault();
+
+        var settingsPath = !string.IsNullOrWhiteSpace(application.SettingsPath)
+            ? application.SettingsPath
+            : KnownConfigurationLocations.FindSettingsPath(application);
+        var settingsHint = FirstNonEmpty(
+            application.SettingsHint,
+            catalogApplication?.SettingsHint,
+            profile?.SettingsHint,
+            KnownConfigurationLocations.FindSettingsHint(application));
+        var resolutionGuide = FirstNonEmpty(
+            application.ResolutionGuide,
+            catalogApplication?.ResolutionGuide,
+            profile?.ResolutionGuide);
 
         return application with
         {
-            SettingsPath = KnownConfigurationLocations.FindSettingsPath(application),
-            SettingsHint = KnownConfigurationLocations.FindSettingsHint(application)
+            Category = profile?.Category ?? application.Category,
+            SettingsPath = settingsPath,
+            SettingsHint = settingsHint,
+            ResolutionGuide = resolutionGuide ?? string.Empty
         };
+    }
+
+    private static string? FirstNonEmpty(params string?[] values)
+    {
+        foreach (var value in values)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+
+        return null;
     }
 }

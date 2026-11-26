@@ -62,6 +62,11 @@ public sealed record ScanStatistics
     public int UserConfiguredShortcuts { get; init; }
     public int DocumentedDefaultShortcuts { get; init; }
     public int RuntimeObservedShortcuts { get; init; }
+    /// <summary>Shortcuts that act while another application has focus.</summary>
+    public int GlobalShortcuts { get; init; }
+    /// <summary>Global shortcuts whose owning application was running at scan time.</summary>
+    public int GlobalShortcutsFromRunningApplications { get; init; }
+    public int RunningApplications { get; init; }
     /// <summary>Normal cross-application duplicates. These are not conflicts.</summary>
     public int DuplicateGroups { get; init; }
     public int NormalDuplicates { get; init; }
@@ -90,7 +95,7 @@ public sealed record ScanSnapshot
     public IReadOnlyList<ApplicationScanResult> ApplicationResults { get; init; } = Array.Empty<ApplicationScanResult>();
     public IReadOnlyList<ScanDiagnostic> Diagnostics { get; init; } = Array.Empty<ScanDiagnostic>();
     public ScanStatistics Statistics { get; init; } = new();
-    public string EngineVersion { get; init; } = "1.1";
+    public string EngineVersion { get; init; } = "1.2";
 
     public static ScanSnapshot Empty() => new()
     {

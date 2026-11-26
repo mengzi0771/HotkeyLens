@@ -14,6 +14,27 @@ public interface IApplicationDiscoveryService
 }
 
 /// <summary>
+/// One-shot process list used to tell whether two applications can compete for
+/// a global hotkey right now. Implementations must not install hooks or monitor
+/// the keyboard; this is a read of the process table at scan time only.
+/// </summary>
+public interface IProcessSnapshotProvider
+{
+    ProcessSnapshot GetSnapshot();
+}
+
+/// <summary>
+/// One read-only view of the process table. <see cref="IsComplete"/> is false when
+/// the enumeration returned an implausibly small list (security software or session
+/// isolation can filter it); callers must then treat unmatched applications as
+/// unknown instead of "not running".
+/// </summary>
+public sealed record ProcessSnapshot(IReadOnlySet<string> ProcessNames, bool IsComplete)
+{
+    public bool Contains(string processName) => ProcessNames.Contains(processName);
+}
+
+/// <summary>
 /// One evidence collector. Implementations must never invent shortcuts: every
 /// result needs a source reference and a confidence rationale.
 /// </summary>

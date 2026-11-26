@@ -13,6 +13,12 @@ public sealed record ConflictParticipant
     public required ShortcutOrigin Origin { get; init; }
     public required ConfidenceLevel Confidence { get; init; }
     public string? Context { get; init; }
+
+    /// <summary>Running state captured by the scan that produced this analysis.</summary>
+    public bool? IsRunning { get; init; }
+
+    /// <summary>Plain-language steps for changing this binding in its application.</summary>
+    public string ResolutionGuide { get; init; } = string.Empty;
 }
 
 /// <summary>

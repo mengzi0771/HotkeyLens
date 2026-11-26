@@ -42,6 +42,15 @@ public static class DisplayLabels
         _ => "未知"
     };
 
+    /// <summary>Plain-language data source used on the conflict resolution card.</summary>
+    public static string DataOrigin(ShortcutOrigin origin) => origin switch
+    {
+        ShortcutOrigin.OfficialDefault => "官方默认规则",
+        ShortcutOrigin.UserConfigured => "用户配置",
+        ShortcutOrigin.RuntimeObserved => "运行时观察",
+        _ => "来源未知"
+    };
+
     public static string Confidence(ConfidenceLevel confidence) => confidence switch
     {
         ConfidenceLevel.High => "高",
@@ -82,6 +91,7 @@ public static class DisplayLabels
         ApplicationSourceKind.StartMenu => "开始菜单",
         ApplicationSourceKind.AppPath => "App Paths",
         ApplicationSourceKind.Package => "应用包",
+        ApplicationSourceKind.KnownLocation => "常见安装位置",
         _ => "未知"
     };
 

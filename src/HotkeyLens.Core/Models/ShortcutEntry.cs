@@ -23,6 +23,13 @@ public sealed record ShortcutEntry
     public string? RawValue { get; init; }
 
     /// <summary>
+    /// Plain-language steps that tell a non-technical user where to change or
+    /// disable this binding inside the owning application. Empty when the
+    /// product has no safe, known settings entry.
+    /// </summary>
+    public string ResolutionGuide { get; init; } = string.Empty;
+
+    /// <summary>
     /// Full display text for a multi-chord sequence (for example
     /// Ctrl+K Ctrl+S). Gesture describes the first chord; consumers must not
     /// treat a sequence as a single global hotkey.

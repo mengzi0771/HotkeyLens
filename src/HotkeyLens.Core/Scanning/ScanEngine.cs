@@ -13,13 +13,16 @@ public sealed class ScanEngine : IScanEngine
 {
     private readonly IApplicationDiscoveryService _discovery;
     private readonly IReadOnlyList<IShortcutSourceAdapter> _adapters;
+    private readonly IProcessSnapshotProvider? _processProbe;
 
     public ScanEngine(
         IApplicationDiscoveryService discovery,
-        IEnumerable<IShortcutSourceAdapter> adapters)
+        IEnumerable<IShortcutSourceAdapter> adapters,
+        IProcessSnapshotProvider? processProbe = null)
     {
         _discovery = discovery;
         _adapters = adapters.ToList();
+        _processProbe = processProbe;
     }
 
     public async Task<ScanSnapshot> ScanAsync(
@@ -40,14 +43,39 @@ public sealed class ScanEngine : IScanEngine
         var discovery = await _discovery.DiscoverAsync(sanitized, cancellationToken)
             .ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
+
+        var processSnapshot = _processProbe?.GetSnapshot();
+        var applications = discovery.Applications
+            .Select(application => application with
+            {
+                IsRunning = ResolveRunningState(application.ProcessName, processSnapshot)
+            })
+            .ToList();
+        var runningByApplication = applications.ToDictionary(
+            application => application.Id,
+            application => application.IsRunning,
+            StringComparer.Ordinal);
+
         progress?.Report(new ScanProgress
         {
             Phase = "应用发现",
-            Message = $"发现 {discovery.Applications.Count} 个应用程序",
+            Message = $"发现 {applications.Count} 个应用程序，其中 {applications.Count(application => application.IsRunning == true)} 个正在运行",
             Percent = 10,
             CompletedSteps = 1,
             TotalSteps = 1
         });
+
+        if (processSnapshot is { IsComplete: false })
+        {
+            progress?.Report(new ScanProgress
+            {
+                Phase = "运行状态",
+                Message = "进程列表数量异常偏少（可能被安全软件或会话隔离过滤），未命中应用的运行状态将标为未知。",
+                Percent = 12,
+                CompletedSteps = 1,
+                TotalSteps = 1
+            });
+        }
 
         var adapters = _adapters.Where(adapter => adapter.IsEnabled(sanitized)).ToList();
         var diagnostics = new List<ScanDiagnostic>(discovery.Diagnostics);
@@ -84,7 +112,7 @@ public sealed class ScanEngine : IScanEngine
                 adapterResult = await adapter.ScanAsync(
                         new ScanContext
                         {
-                            Applications = discovery.Applications,
+                            Applications = applications,
                             Options = sanitized,
                             StartedAt = DateTimeOffset.Now,
                             DataDirectory = GetDataDirectory()
@@ -150,7 +178,7 @@ public sealed class ScanEngine : IScanEngine
             Percent = 95
         });
 
-        var applicationsById = discovery.Applications
+        var applicationsById = applications
             .GroupBy(application => application.Id, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
         var unknownApplicationEntries = entries.RemoveAll(entry => !applicationsById.ContainsKey(entry.ApplicationId));
@@ -164,12 +192,12 @@ public sealed class ScanEngine : IScanEngine
             });
         }
 
-        var conflicts = ShortcutConflictAnalyzer.Analyze(entries);
+        var conflicts = ShortcutConflictAnalyzer.Analyze(entries, runningByApplication);
         var applicationResults = BuildApplicationResults(
-            discovery.Applications,
+            applications,
             entries,
             coveredSources);
-        var statistics = BuildStatistics(entries, applicationResults, conflicts, adapterFailures);
+        var statistics = BuildStatistics(entries, applicationResults, applications, conflicts, adapterFailures);
         stopwatch.Stop();
         progress?.Report(new ScanProgress
         {
@@ -185,7 +213,7 @@ public sealed class ScanEngine : IScanEngine
             ScannedAt = DateTimeOffset.Now,
             DurationMilliseconds = stopwatch.ElapsedMilliseconds,
             Options = sanitized,
-            Applications = discovery.Applications,
+            Applications = applications,
             Shortcuts = entries
                 .OrderBy(entry => entry.ApplicationName, StringComparer.CurrentCultureIgnoreCase)
                 .ThenBy(entry => entry.Scope)
@@ -197,8 +225,24 @@ public sealed class ScanEngine : IScanEngine
             ApplicationResults = applicationResults,
             Diagnostics = diagnostics,
             Statistics = statistics,
-            EngineVersion = "1.1"
+            EngineVersion = "1.2"
         };
+    }
+
+    private static bool? ResolveRunningState(string? processName, ProcessSnapshot? snapshot)
+    {
+        if (snapshot is null || string.IsNullOrWhiteSpace(processName))
+        {
+            return null;
+        }
+
+        if (snapshot.Contains(processName))
+        {
+            return true;
+        }
+
+        // A filtered process table cannot prove that an application is closed.
+        return snapshot.IsComplete ? false : null;
     }
 
     private static IReadOnlyList<ApplicationScanResult> BuildApplicationResults(
@@ -267,6 +311,7 @@ public sealed class ScanEngine : IScanEngine
     private static ScanStatistics BuildStatistics(
         IReadOnlyList<ShortcutEntry> shortcuts,
         IReadOnlyList<ApplicationScanResult> applicationResults,
+        IReadOnlyList<DiscoveredApplication> applications,
         IReadOnlyList<ShortcutConflict> conflicts,
         int adapterFailures)
     {
@@ -283,6 +328,10 @@ public sealed class ScanEngine : IScanEngine
             .Select(conflict => conflict.Gesture.Canonical)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Count();
+        var runningIds = applications
+            .Where(application => application.IsRunning == true)
+            .Select(application => application.Id)
+            .ToHashSet(StringComparer.Ordinal);
 
         return new ScanStatistics
         {
@@ -301,6 +350,10 @@ public sealed class ScanEngine : IScanEngine
                 entry.Origin == ShortcutOrigin.OfficialDefault),
             RuntimeObservedShortcuts = shortcuts.Count(entry =>
                 entry.Origin == ShortcutOrigin.RuntimeObserved),
+            GlobalShortcuts = shortcuts.Count(entry => entry.Scope == ShortcutScope.Global),
+            GlobalShortcutsFromRunningApplications = shortcuts.Count(entry =>
+                entry.Scope == ShortcutScope.Global && runningIds.Contains(entry.ApplicationId)),
+            RunningApplications = runningIds.Count,
             DuplicateGroups = conflicts.Count(conflict =>
                 conflict.Classification == ConflictClassification.NormalDuplicate),
             NormalDuplicates = conflicts.Count(conflict =>
